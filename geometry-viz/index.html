@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transversal Angle Explorer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #0f0f13;
+    color: #e0e0e0;
+    overflow: hidden;
+    height: 100vh;
+  }
+  #canvas-container { width: 100%; height: 100vh; display: block; }
+
+  #legend {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: rgba(15, 15, 19, 0.9);
+    border: 1px solid #2a2a38;
+    border-radius: 10px;
+    padding: 16px 20px;
+    font-size: 0.85rem;
+    min-width: 200px;
+    backdrop-filter: blur(6px);
+    pointer-events: none;
+    z-index: 10;
+  }
+  #legend h2 {
+    font-size: 1rem;
+    color: #fff;
+    margin-bottom: 10px;
+    pointer-events: auto;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .legend-color {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .legend-label { color: #ccc; }
+
+  #controls {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 15, 19, 0.9);
+    border: 1px solid #2a2a38;
+    border-radius: 12px;
+    padding: 16px 28px;
+    backdrop-filter: blur(6px);
+    z-index: 10;
+    text-align: center;
+    min-width: 300px;
+  }
+  #controls label {
+    display: block;
+    font-size: 0.9rem;
+    color: #aaa;
+    margin-bottom: 8px;
+  }
+  #controls input[type="range"] {
+    width: 100%;
+    accent-color: #6cdb9e;
+    cursor: grab;
+  }
+  #controls input[type="range"]:active { cursor: grabbing; }
+  #angle-value {
+    font-size: 1.1rem;
+    color: #fff;
+    font-weight: 600;
+    margin-top: 6px;
+  }
+  #congruence-badge {
+    display: inline-block;
+    background: #1a3a2a;
+    color: #6cdb9e;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    margin-top: 6px;
+    font-weight: 500;
+  }
+  .instruction {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #555;
+    font-size: 0.8rem;
+    z-index: 5;
+    text-align: center;
+    pointer-events: none;
+  }
+  @media (max-width: 600px) {
+    #legend { top: 10px; left: 10px; padding: 12px 14px; font-size: 0.75rem; min-width: 150px; }
+    #controls { min-width: 200px; padding: 12px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<div id="legend">
+  <h2>📐 Angle Pairs</h2>
+  <div class="legend-item"><div class="legend-color" style="background:#ff6b6b"></div><span class="legend-label">Alternate Interior (congruent)</span></div>
+  <div class="legend-item"><div class="legend-color" style="background:#4ecdc4"></div><span class="legend-label">Alternate Exterior (congruent)</span></div>
+  <div class="legend-item"><div class="legend-color" style="background:#ffd93d"></div><span class="legend-label">Corresponding (congruent)</span></div>
+  <div class="legend-item"><div class="legend-color" style="background:#888"></div><span class="legend-label">Consecutive Interior (supplementary)</span></div>
+</div>
+
+<div id="controls">
+  <label for="angle-slider">Transversal Angle</label>
+  <input type="range" id="angle-slider" min="20" max="80" value="50" step="0.5">
+  <div id="angle-value">Transversal: 50°</div>
+  <div id="congruence-badge">✅ All angle pairs congruent</div>
+</div>
+
+<div class="instruction">← Drag the slider to rotate the transversal →</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+// ── Scene setup ──────────────────────────────────────────────
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0f0f13);
+
+const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 40);
+camera.position.set(5, 3, 8);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+container.appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(container.clientWidth, container.clientHeight);
+labelRenderer.domElement.style.position = 'absolute';
+labelRenderer.domElement.style.top = '0';
+labelRenderer.domElement.style.left = '0';
+labelRenderer.domElement.style.pointerEvents = 'none';
+container.appendChild(labelRenderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 3;
+controls.maxDistance = 20;
+controls.target.set(0, 0, 0);
+
+// ── Lighting ─────────────────────────────────────────────────
+const ambient = new THREE.AmbientLight(0x404060, 0.6);
+scene.add(ambient);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.8);
+dirLight.position.set(5, 10, 7);
+scene.add(dirLight);
+const fillLight = new THREE.DirectionalLight(0x8888ff, 0.4);
+fillLight.position.set(-3, 0, -5);
+scene.add(fillLight);
+
+// ── Geometry constants ───────────────────────────────────────
+const lineY1 = 2.2;
+const lineY2 = -2.2;
+const lineZ = 0;
+const extX = 5.5;
+
+// Colors
+const COLOR_ALT_INT = 0xff6b6b;   // red
+const COLOR_ALT_EXT = 0x4ecdc4;   // teal
+const COLOR_CORR = 0xffd93d;      // yellow
+const COLOR_CONS_INT = 0x888888;  // gray
+
+// ── Helper: create a line ────────────────────────────────────
+function createLine(x1, y1, x2, y2, color = 0x555577, dashed = false) {
+  const pts = [new THREE.Vector3(x1, y1, lineZ), new THREE.Vector3(x2, y2, lineZ)];
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  let mat;
+  if (dashed) {
+    mat = new THREE.LineDashedMaterial({ color, dashSize: 0.08, gapSize: 0.06, linewidth: 2 });
+  } else {
+    mat = new THREE.LineBasicMaterial({ color, linewidth: 2 });
+  }
+  const line = new THREE.Line(geo, mat);
+  if (dashed) line.computeLineDistances();
+  return line;
+}
+
+// ── Parallel lines ───────────────────────────────────────────
+const lineMat = new THREE.LineBasicMaterial({ color: 0xaaaadd, linewidth: 2 });
+
+function makeParallelLine(y) {
+  const pts = [new THREE.Vector3(-extX, y, lineZ), new THREE.Vector3(extX, y, lineZ)];
+  return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lineMat);
+}
+const topLine = makeParallelLine(lineY1);
+const bottomLine = makeParallelLine(lineY2);
+scene.add(topLine);
+scene.add(bottomLine);
+
+// Labels for parallel lines
+function makeLabel(text, pos, color = '#aaaadd') {
+  const div = document.createElement('div');
+  div.textContent = text;
+  div.style.color = color;
+  div.style.fontSize = '14px';
+  div.style.fontWeight = '600';
+  div.style.fontFamily = 'system-ui, sans-serif';
+  div.style.textShadow = '0 0 8px rgba(0,0,0,0.9)';
+  const label = new CSS2DObject(div);
+  label.position.copy(pos);
+  return label;
+}
+scene.add(makeLabel('ℓ₁', new THREE.Vector3(-extX - 0.5, lineY1 + 0.3, lineZ)));
+scene.add(makeLabel('ℓ₂', new THREE.Vector3(-extX - 0.5, lineY2 + 0.3, lineZ)));
+
+// ── Transversal (rotatable) ──────────────────────────────────
+const transversalGroup = new THREE.Group();
+scene.add(transversalGroup);
+
+const transMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+
+function updateTransversal(angleDeg) {
+  // Remove old transversal
+  while (transversalGroup.children.length > 0) {
+    const child = transversalGroup.children[0];
+    transversalGroup.remove(child);
+    if (child.geometry) child.geometry.dispose();
+    if (child.material) child.material.dispose();
+  }
+
+  const angleRad = angleDeg * Math.PI / 180;
+  const halfLen = 5.5;
+  const dx = halfLen * Math.cos(angleRad);
+  const dy = halfLen * Math.sin(angleRad);
+  const pts = [new THREE.Vector3(-dx, -dy, lineZ), new THREE.Vector3(dx, dy, lineZ)];
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const line = new THREE.Line(geo, transMat);
+  transversalGroup.add(line);
+
+  // Intersection points with parallel lines
+  // Transversal: y = mx where m = tan(angleRad)
+  // ℓ₁: y = lineY1
+  const m = Math.tan(angleRad);
+  const x1 = lineY1 / m;
+  const x2 = lineY2 / m;
+
+  // Angles at top intersection
+  const topRight = { x: x1, y: lineY1 };
+  const bottomRight = { x: x2, y: lineY2 };
+
+  // Compute angles (∠ from positive x-axis)
+  // Top angles:
+  // The transversal line at top intersection: direction vector (1, m)
+  // Angle of transversal: angleRad
+  // Alternate interior: angles on opposite sides of transversal, inside the parallel lines
+  // Alt interior top-left = 180 - angleRad (in degrees)
+  // Alt interior bottom-right = angleRad
+  // Alt exterior top-right = angleRad
+  // Alt exterior bottom-left = 180 - angleRad
+  // Corresponding top-right = angleRad, bottom-right = angleRad
+  // Let's be precise with the geometry:
+
+  // At the TOP intersection:
+  // The transversal goes through (x1, y1). The acute angle between transversal and the horizontal is 'angleRad'.
+  // Looking at standard transversal angle pairs:
+
+  // Angle measurements (in degrees)
+  const theta = angleDeg; // acute angle of transversal
+  const thetaSup = 180 - theta;
+
+  // Position the angle arcs and labels
+  // We'll place arc segments and label each angle
+
+  // Clear old arc/label children (they're also in transversalGroup or we can use a separate group)
+  // Actually let's put arcs and labels in their own groups so we can clear them
+  if (window._arcGroup) {
+    while (window._arcGroup.children.length) {
+      const c = window._arcGroup.children[0];
+      window._arcGroup.remove(c);
+      if (c.geometry) c.geometry.dispose();
+    }
+    scene.remove(window._arcGroup);
+  }
+  window._arcGroup = new THREE.Group();
+  scene.add(window._arcGroup);
+
+  if (window._labelGroup) {
+    while (window._labelGroup.children.length) {
+      const c = window._labelGroup.children[0];
+      window._labelGroup.remove(c);
+      if (c.geometry) c.geometry.dispose();
+    }
+    scene.remove(window._labelGroup);
+  }
+  window._labelGroup = new THREE.Group();
+  scene.add(window._labelGroup);
+
+  // ── Arc helper ───────────────────────────────────────────
+  function addArc(centerX, centerY, startAngle, endAngle, radius, color, label, labelAngleOffset) {
+    const segments = 32;
+    const pts = [];
+    for (let i = 0; i <= segments; i++) {
+      const t = startAngle + (endAngle - startAngle) * (i / segments);
+      pts.push(new THREE.Vector3(
+        centerX + radius * Math.cos(t),
+        centerY + radius * Math.sin(t),
+        lineZ + 0.02
+      ));
+    }
+    const geo = new THREE.BufferGeometry().setFromPoints(pts);
+    const mat = new THREE.LineBasicMaterial({ color, linewidth: 2 });
+    const arc = new THREE.Line(geo, mat);
+    window._arcGroup.add(arc);
+
+    // Label at the midpoint of the arc, slightly further out
+    const midAngle = (startAngle + endAngle) / 2;
+    const labelR = radius + 0.3;
+    const lx = centerX + labelR * Math.cos(midAngle);
+    const ly = centerY + labelR * Math.sin(midAngle);
+
+    const div = document.createElement('div');
+    div.textContent = label;
+    div.style.color = '#fff';
+    div.style.fontSize = '13px';
+    div.style.fontWeight = '700';
+    div.style.fontFamily = 'system-ui, sans-serif';
+    div.style.textShadow = '0 0 6px rgba(0,0,0,0.95), 0 0 3px rgba(0,0,0,0.8)';
+    div.style.background = 'rgba(0,0,0,0.5)';
+    div.style.padding = '2px 6px';
+    div.style.borderRadius = '4px';
+    const labelObj = new CSS2DObject(div);
+    labelObj.position.set(lx, ly, lineZ + 0.05);
+    window._labelGroup.add(labelObj);
+  }
+
+  // ── Define the angles ──────────────────────────────────────
+  // At top intersection (x1, lineY1):
+  // The transversal line goes UP and RIGHT from (x1, y1). Its direction is angleRad from horizontal.
+  // Above the top line, the transversal makes angle theta with the horizontal.
+  // Below the top line, it makes theta + 180 (the other direction).
+  //
+  // Standard naming (looking at parallel lines ℓ₁ (top) and ℓ₂ (bottom), transversal bottom-left to top-right):
+  //
+  //    ∠1 = theta (top-right, between transversal and line, inside)  → alt interior with ∠7
+  //    ∠2 = 180-theta (top-right, outside) → alt exterior with ∠8
+  //    ∠3 = 180-theta (top-left, inside) → alt interior with ∠6
+  //    ∠4 = theta (top-left, outside) → alt exterior with ∠5
+  //    ∠5 = theta (bottom-left, outside)
+  //    ∠6 = 180-theta (bottom-left, inside)
+  //    ∠7 = 180-theta (bottom-right, inside)
+  //    ∠8 = theta (bottom-right, outside)
+
+  const arcR = 0.35;
+
+  // Top intersection angles
+  // Transversal goes from bottom-left to top-right (direction angleRad)
+  // At top intersection (x1, y1):
+  //   - The line to the RIGHT is angle 0 (positive x)
+  //   - The line to the LEFT is angle π (negative x)
+  //   - The transversal going up-right is angle theta
+  
+  // ∠1 (top-right, inside) — between horizontal (0) and transversal (theta)
+  addArc(x1, lineY1, 0, theta * Math.PI / 180, arcR, COLOR_CORR, `${theta.toFixed(1)}°`, 0);
+
+  // ∠2 (top-right, outside) — between transversal (theta) and upward vertical (π/2)
+  // Actually ∠2 is the supplementary angle on the outside, above the top line
+  // Between transversal (theta) and the reverse direction (theta + π) on the outside
+  // Upper region: between transversal (theta) and the perpendicular going up... 
+  // Simpler: ∠2 is just the other angle at that vertex — supplementary to ∠1
+  addArc(x1, lineY1, theta * Math.PI / 180, Math.PI, arcR * 0.9, COLOR_ALT_EXT, `${(180-theta).toFixed(1)}°`, 0);
+
+  // ∠3 (top-left, inside) — between reverse transversal and leftward
+  // Transversal reverses at angle theta + π. The line to the left is angle π.
+  // Going counterclockwise from π to π + theta: that's theta radians
+  addArc(x1, lineY1, Math.PI, Math.PI + theta * Math.PI / 180, arcR, COLOR_ALT_INT, `${theta.toFixed(1)}°`, 0);
+
+  // ∠4 (top-left, outside) — the supplementary
+  addArc(x1, lineY1, Math.PI + theta * Math.PI / 180, 2 * Math.PI, arcR * 0.9, COLOR_CORR, `${(180-theta).toFixed(1)}°`, 0);
+
+  // Bottom intersection angles
+  // ∠5 (bottom-left, outside) — between leftward horizontal and downward transversal
+  // Line to the left: angle π. Downward transversal: angle π + theta (reversed from top)
+  // Going counterclockwise from π to π+theta = theta radians
+  addArc(x2, lineY2, Math.PI, Math.PI + theta * Math.PI / 180, arcR, COLOR_ALT_EXT, `${theta.toFixed(1)}°`, 0);
+
+  // ∠6 (bottom-left, inside) — supplementary
+  addArc(x2, lineY2, Math.PI + theta * Math.PI / 180, 2 * Math.PI, arcR * 0.9, COLOR_ALT_INT, `${(180-theta).toFixed(1)}°`, 0);
+
+  // ∠7 (bottom-right, inside) — between rightward horizontal (0) and upward transversal going the other way
+  // The upward transversal at bottom intersection: angle theta (same direction as at top)
+  // Actually at bottom, the transversal goes UP and RIGHT, same direction angle theta from horizontal.
+  // Going ccw from 0 to theta:
+  addArc(x2, lineY2, 0, theta * Math.PI / 180, arcR, COLOR_ALT_INT, `${theta.toFixed(1)}°`, 0);
+
+  // ∠8 (bottom-right, outside) — supplementary
+  addArc(x2, lineY2, theta * Math.PI / 180, Math.PI, arcR * 0.9, COLOR_CORR, `${(180-theta).toFixed(1)}°`, 0);
+
+  // ── Update UI ──────────────────────────────────────────────
+  document.getElementById('angle-value').textContent = `Transversal: ${theta.toFixed(1)}°`;
+  document.getElementById('congruence-badge').textContent = 
+    `✅ All angle pairs congruent  (${theta.toFixed(1)}° & ${thetaSup.toFixed(1)}°)`;
+}
+
+// ── Slider ───────────────────────────────────────────────────
+const slider = document.getElementById('angle-slider');
+let currentAngle = parseFloat(slider.value);
+updateTransversal(currentAngle);
+
+slider.addEventListener('input', () => {
+  currentAngle = parseFloat(slider.value);
+  updateTransversal(currentAngle);
+});
+
+// ── Grid (subtle) ────────────────────────────────────────────
+const gridHelper = new THREE.GridHelper(12, 12, 0x222244, 0x222244);
+gridHelper.position.z = -0.5;
+scene.add(gridHelper);
+
+// ── Resize ──────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+  labelRenderer.setSize(w, h);
+});
+
+// ── Animate ──────────────────────────────────────────────────
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+}
+animate();
+
+console.log('🚀 Transversal Angle Explorer ready');
+</script>
+</body>
+</html>
