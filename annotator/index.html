@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Teaching Annotator</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; background: #0f0f13; font-family: system-ui, sans-serif; }
+
+  #app {
+    display: flex;
+    height: 100%;
+    width: 100%;
+  }
+
+  /* ── Sidebar (tools) ── */
+  #sidebar {
+    width: 56px;
+    background: #16161f;
+    border-right: 1px solid #2a2a38;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 0;
+    gap: 4px;
+    flex-shrink: 0;
+    z-index: 20;
+    position: relative;
+  }
+  #sidebar .tool-btn {
+    width: 40px; height: 40px;
+    border: none; border-radius: 8px;
+    background: transparent;
+    color: #888;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s;
+    position: relative;
+  }
+  #sidebar .tool-btn:hover { background: #22223a; color: #ccc; }
+  #sidebar .tool-btn.active { background: #2a3a5a; color: #6cdb9e; }
+  #sidebar .tool-btn.active[data-tool="pen"] { background: #2a1a1a; color: #ff6b6b; }
+  #sidebar .tool-btn.active[data-tool="highlighter"] { background: #2a2a1a; color: #ffd93d; }
+  #sidebar .tool-btn.active[data-tool="eraser"] { background: #1a1a2a; color: #888; }
+  #sidebar .tool-btn.active[data-tool="laser"] { background: #2a1a2a; color: #ff6b6b; }
+  #sidebar .tool-btn.active[data-tool="box"] { background: #1a2a2a; color: #4ea8de; }
+  #sidebar .separator {
+    width: 32px; height: 1px; background: #2a2a38; margin: 6px 0;
+  }
+  /* Color swatches in sidebar */
+  .color-swatch {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid transparent; cursor: pointer; margin: 2px 0;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .color-swatch:hover { transform: scale(1.15); }
+  .color-swatch.active { border-color: #6cdb9e; }
+  .color-1 { background: #ff6b6b; }
+  .color-2 { background: #ffd93d; }
+  .color-3 { background: #6cdb9e; }
+  .color-4 { background: #4ea8de; }
+  .color-5 { background: #ffffff; }
+  .color-6 { background: #ff9f43; }
+
+  /* ── Main content area ── */
+  #main {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Experiment iframe */
+  #experiment-frame {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    border: none;
+    pointer-events: auto;
+  }
+  #experiment-frame.annotations-active { pointer-events: none; }
+
+  /* Annotation canvas */
+  #annotation-canvas {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    cursor: crosshair;
+    touch-action: none;
+    z-index: 10;
+  }
+
+  /* ── Bottom bar (thickness + zoom + controls) ── */
+  #bottom-bar {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(22, 22, 31, 0.92);
+    border: 1px solid #2a2a38;
+    border-radius: 12px;
+    padding: 8px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    z-index: 20;
+    backdrop-filter: blur(8px);
+    font-size: 13px;
+    color: #aaa;
+  }
+  #bottom-bar label { font-size: 12px; color: #888; white-space: nowrap; }
+  #thickness-slider { width: 100px; accent-color: #6cdb9e; cursor: grab; cursor: -webkit-grab; }
+  #thickness-slider:active { cursor: grabbing; }
+  #thickness-value { min-width: 30px; text-align: center; color: #fff; font-weight: 600; }
+  #bottom-bar .ctrl-btn {
+    background: none; border: 1px solid #2a2a38; border-radius: 6px;
+    color: #aaa; cursor: pointer; padding: 4px 8px; font-size: 14px;
+    transition: background 0.15s, color 0.15s;
+  }
+  #bottom-bar .ctrl-btn:hover { background: #22223a; color: #fff; }
+  #zoom-display { min-width: 55px; text-align: center; color: #888; font-size: 12px; }
+
+  /* ── Experiment picker (top-left) ── */
+  #experiment-picker {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 25;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(22, 22, 31, 0.92);
+    border: 1px solid #2a2a38;
+    border-radius: 10px;
+    padding: 6px 12px;
+    backdrop-filter: blur(8px);
+  }
+  #experiment-picker select {
+    background: #1a1a24;
+    border: 1px solid #2a2a38;
+    border-radius: 6px;
+    color: #e0e0e0;
+    padding: 4px 8px;
+    font-size: 13px;
+    cursor: pointer;
+    max-width: 200px;
+  }
+  #experiment-picker select:focus { outline: none; border-color: #4ea8de; }
+
+  /* ── Hide / Clear buttons positioned near picker ── */
+  #action-buttons {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 25;
+    display: flex;
+    gap: 6px;
+  }
+  #action-buttons button {
+    background: rgba(22, 22, 31, 0.92);
+    border: 1px solid #2a2a38;
+    border-radius: 8px;
+    color: #aaa;
+    font-size: 18px;
+    width: 36px; height: 36px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(8px);
+    transition: background 0.15s, color 0.15s;
+  }
+  #action-buttons button:hover { background: #22223a; color: #fff; }
+  #action-buttons button.active-toggle { color: #6cdb9e; background: #1a3a2a; border-color: #3a6a4a; }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    #sidebar { width: 44px; }
+    #sidebar .tool-btn { width: 32px; height: 32px; font-size: 14px; }
+    #bottom-bar { padding: 6px 10px; gap: 8px; font-size: 11px; left: 5%; transform: none; right: 5%; width: 90%; }
+    #thickness-slider { width: 60px; }
+    #experiment-picker select { max-width: 120px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <button class="tool-btn active" data-tool="pen" title="Pen (P)">✏️</button>
+    <button class="tool-btn" data-tool="highlighter" title="Highlighter (H)">🖍️</button>
+    <button class="tool-btn" data-tool="eraser" title="Eraser (E)">🧹</button>
+    <button class="tool-btn" data-tool="laser" title="Laser Pointer (L)">🔴</button>
+    <button class="tool-btn" data-tool="box" title="Box Outline (B)">⬜</button>
+    <div class="separator"></div>
+    <div class="color-swatch color-1 active" data-color="#ff6b6b" title="Red"></div>
+    <div class="color-swatch color-2" data-color="#ffd93d" title="Yellow"></div>
+    <div class="color-swatch color-3" data-color="#6cdb9e" title="Green"></div>
+    <div class="color-swatch color-4" data-color="#4ea8de" title="Blue"></div>
+    <div class="color-swatch color-5" data-color="#ffffff" title="White"></div>
+    <div class="color-swatch color-6" data-color="#ff9f43" title="Orange"></div>
+  </div>
+
+  <!-- Main area -->
+  <div id="main">
+    <div id="experiment-picker">
+      <label style="color:#888;font-size:12px;">Experiment:</label>
+      <select id="experiment-select"></select>
+    </div>
+    <div id="action-buttons">
+      <button id="btn-hide" title="Show/Hide annotations (Space)">👁️</button>
+      <button id="btn-clear" title="Clear all annotations (double-click canvas)">🗑️</button>
+      <button id="btn-undo" title="Undo last stroke (Ctrl+Z)">↩️</button>
+    </div>
+
+    <iframe id="experiment-frame" src="" sandbox="allow-scripts allow-same-origin"></iframe>
+    <canvas id="annotation-canvas"></canvas>
+
+    <div id="bottom-bar">
+      <label>Size</label>
+      <input type="range" id="thickness-slider" min="1" max="20" value="3" step="0.5">
+      <span id="thickness-value">3</span>
+      <span style="color:#333">|</span>
+      <button class="ctrl-btn" id="zoom-out" title="Zoom Out">−</button>
+      <span id="zoom-display">100%</span>
+      <button class="ctrl-btn" id="zoom-in" title="Zoom In">+</button>
+      <button class="ctrl-btn" id="zoom-reset" title="Reset Zoom">⟲</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+// ── DOM refs ────────────────────────────────────────────────
+const canvas = document.getElementById('annotation-canvas');
+const ctx = canvas.getContext('2d');
+const frame = document.getElementById('experiment-frame');
+const expSelect = document.getElementById('experiment-select');
+const thicknessSlider = document.getElementById('thickness-slider');
+const thicknessValue = document.getElementById('thickness-value');
+const zoomDisplay = document.getElementById('zoom-display');
+const btnHide = document.getElementById('btn-hide');
+const btnClear = document.getElementById('btn-clear');
+const btnUndo = document.getElementById('btn-undo');
+const main = document.getElementById('main');
+
+// Tool buttons
+const toolBtns = document.querySelectorAll('[data-tool]');
+const colorSwatches = document.querySelectorAll('.color-swatch');
+
+// ── State ──────────────────────────────────────────────────
+const state = {
+  tool: 'pen',
+  color: '#ff6b6b',
+  thickness: 3,
+  zoom: 1,
+  panX: 0,
+  panY: 0,
+  isDrawing: false,
+  isVisible: true,
+  currentExperiment: '',
+};
+
+// Strokes stored per experiment
+let strokes = [];
+let currentStroke = null;
+let undoStack = [];
+
+// ── Canvas sizing ───────────────────────────────────────────
+function resizeCanvas() {
+  const rect = main.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  renderAll();
+}
+
+// ── Coordinate helpers ─────────────────────────────────────
+function clientToCanvas(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  const x = (clientX - rect.left) / state.zoom - state.panX;
+  const y = (clientY - rect.top) / state.zoom - state.panY;
+  return { x, y };
+}
+
+// ── Stroke model ───────────────────────────────────────────
+function createStroke(tool, color, thickness, points, boxData) {
+  return { tool, color, thickness, points: points || [], boxData, timestamp: Date.now() };
+}
+
+function addPointToStroke(stroke, x, y) {
+  if (!stroke.points) stroke.points = [];
+  stroke.points.push({ x, y });
+}
+
+// ── Rendering ──────────────────────────────────────────────
+function renderAll() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!state.isVisible) return;
+
+  ctx.save();
+  ctx.translate(state.panX * state.zoom, state.panY * state.zoom);
+  ctx.scale(state.zoom, state.zoom);
+
+  for (const s of strokes) {
+    drawStroke(s);
+  }
+  if (currentStroke) {
+    drawStroke(currentStroke);
+  }
+
+  ctx.restore();
+}
+
+function drawStroke(s) {
+  if (!s.points || s.points.length < 2) {
+    // Box tool
+    if (s.tool === 'box' && s.boxData) {
+      const b = s.boxData;
+      ctx.save();
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = s.thickness;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      ctx.restore();
+    }
+    return;
+  }
+
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  if (s.tool === 'highlighter') {
+    ctx.globalAlpha = 0.35;
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = s.thickness * 4;
+  } else if (s.tool === 'eraser') {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.strokeStyle = 'rgba(0,0,0,1)';
+    ctx.lineWidth = s.thickness * 3;
+  } else {
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = s.thickness;
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(s.points[0].x, s.points[0].y);
+  for (let i = 1; i < s.points.length; i++) {
+    ctx.lineTo(s.points[i].x, s.points[i].y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ── Drawing handlers ───────────────────────────────────────
+function getPointerPos(e) {
+  const t = e.touches ? e.touches[0] : e;
+  return clientToCanvas(t.clientX, t.clientY);
+}
+
+function onPointerDown(e) {
+  e.preventDefault();
+  const pos = getPointerPos(e);
+
+  if (state.tool === 'box') {
+    currentStroke = createStroke('box', state.color, state.thickness, null, { x: pos.x, y: pos.y, w: 0, h: 0 });
+  } else {
+    currentStroke = createStroke(state.tool, state.color, state.thickness, [pos]);
+  }
+  state.isDrawing = true;
+}
+
+function onPointerMove(e) {
+  e.preventDefault();
+  if (state.tool === 'laser' && !state.isDrawing) {
+    // Laser pointer: draw a temporary dot that fades
+    const pos = getPointerPos(e);
+    renderAll();
+    ctx.save();
+    ctx.translate(state.panX * state.zoom, state.panY * state.zoom);
+    ctx.scale(state.zoom, state.zoom);
+    const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 15);
+    gradient.addColorStop(0, 'rgba(255,50,50,0.9)');
+    gradient.addColorStop(0.3, 'rgba(255,50,50,0.4)');
+    gradient.addColorStop(1, 'rgba(255,50,50,0)');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  if (!state.isDrawing || !currentStroke) return;
+  const pos = getPointerPos(e);
+
+  if (currentStroke.tool === 'box') {
+    if (!currentStroke.boxData) return;
+    const startX = currentStroke.boxData.x;
+    const startY = currentStroke.boxData.y;
+    currentStroke.boxData.w = pos.x - startX;
+    currentStroke.boxData.h = pos.y - startY;
+  } else {
+    addPointToStroke(currentStroke, pos.x, pos.y);
+  }
+  renderAll();
+}
+
+function onPointerUp(e) {
+  if (!state.isDrawing || !currentStroke) return;
+  state.isDrawing = false;
+
+  // Don't save tiny strokes
+  if (currentStroke.tool === 'box' && currentStroke.boxData) {
+    if (Math.abs(currentStroke.boxData.w) < 5 && Math.abs(currentStroke.boxData.h) < 5) {
+      currentStroke = null;
+      renderAll();
+      return;
+    }
+  } else if (currentStroke.points && currentStroke.points.length < 3) {
+    currentStroke = null;
+    renderAll();
+    return;
+  }
+
+  strokes.push(currentStroke);
+  undoStack = []; // clear redo
+  currentStroke = null;
+  saveAnnotations();
+  renderAll();
+}
+
+// ── Pointer events (mouse + touch) ────────────────────────
+canvas.addEventListener('mousedown', onPointerDown);
+canvas.addEventListener('mousemove', onPointerMove);
+canvas.addEventListener('mouseup', onPointerUp);
+canvas.addEventListener('mouseleave', (e) => {
+  if (state.isDrawing) onPointerUp(e);
+});
+
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); onPointerDown(e); }, { passive: false });
+canvas.addEventListener('touchmove', (e) => { e.preventDefault(); onPointerMove(e); }, { passive: false });
+canvas.addEventListener('touchend', (e) => { e.preventDefault(); onPointerUp(e); }, { passive: false });
+
+// ── Thickness ──────────────────────────────────────────────
+thicknessSlider.addEventListener('input', () => {
+  state.thickness = parseFloat(thicknessSlider.value);
+  thicknessValue.textContent = state.thickness;
+});
+
+// ── Tool selection ─────────────────────────────────────────
+toolBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    toolBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.tool = btn.dataset.tool;
+    canvas.style.cursor = state.tool === 'eraser' ? 'cell' :
+                          state.tool === 'laser' ? 'none' : 'crosshair';
+  });
+});
+
+// ── Color selection ────────────────────────────────────────
+colorSwatches.forEach(sw => {
+  sw.addEventListener('click', () => {
+    colorSwatches.forEach(s => s.classList.remove('active'));
+    sw.classList.add('active');
+    state.color = sw.dataset.color;
+  });
+});
+
+// ── Zoom ───────────────────────────────────────────────────
+function applyZoom() {
+  zoomDisplay.textContent = Math.round(state.zoom * 100) + '%';
+  renderAll();
+}
+
+document.getElementById('zoom-in').addEventListener('click', () => {
+  state.zoom = Math.min(state.zoom + 0.25, 5);
+  applyZoom();
+});
+document.getElementById('zoom-out').addEventListener('click', () => {
+  state.zoom = Math.max(state.zoom - 0.25, 0.25);
+  applyZoom();
+});
+document.getElementById('zoom-reset').addEventListener('click', () => {
+  state.zoom = 1;
+  state.panX = 0;
+  state.panY = 0;
+  applyZoom();
+});
+
+// Mouse wheel zoom
+main.addEventListener('wheel', (e) => {
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    state.zoom = Math.max(0.25, Math.min(5, state.zoom + delta));
+    applyZoom();
+  }
+}, { passive: false });
+
+// Pinch-to-zoom for touch
+let lastPinchDist = 0;
+main.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 2) {
+    lastPinchDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+  }
+}, { passive: true });
+main.addEventListener('touchmove', (e) => {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    const dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    const delta = (dist - lastPinchDist) * 0.005;
+    state.zoom = Math.max(0.25, Math.min(5, state.zoom + delta));
+    lastPinchDist = dist;
+    applyZoom();
+  }
+}, { passive: false });
+
+// ── Pan (middle mouse + drag) ──────────────────────────────
+let isPanning = false;
+let panStart = { x: 0, y: 0 };
+canvas.addEventListener('mousedown', (e) => {
+  if (e.button === 1) {
+    isPanning = true;
+    panStart = { x: e.clientX - state.panX * state.zoom, y: e.clientY - state.panY * state.zoom };
+    e.preventDefault();
+  }
+});
+canvas.addEventListener('mousemove', (e) => {
+  if (isPanning) {
+    state.panX = (e.clientX - panStart.x) / state.zoom;
+    state.panY = (e.clientY - panStart.y) / state.zoom;
+    renderAll();
+  }
+});
+canvas.addEventListener('mouseup', (e) => {
+  if (e.button === 1) isPanning = false;
+});
+
+// ── Actions ────────────────────────────────────────────────
+// Hide/Show
+btnHide.addEventListener('click', () => {
+  state.isVisible = !state.isVisible;
+  btnHide.classList.toggle('active-toggle');
+  renderAll();
+});
+
+// Clear (double-click canvas)
+let lastClickTime = 0;
+canvas.addEventListener('click', (e) => {
+  if (state.tool === 'laser' || state.tool === 'box') return;
+  const now = Date.now();
+  if (now - lastClickTime < 400) {
+    // Double-click
+    undoStack = [];
+    strokes = [];
+    saveAnnotations();
+    renderAll();
+    // Flash feedback
+    canvas.style.opacity = '0.4';
+    setTimeout(() => canvas.style.opacity = '1', 150);
+  }
+  lastClickTime = now;
+});
+btnClear.addEventListener('click', () => {
+  undoStack = [];
+  strokes = [];
+  saveAnnotations();
+  renderAll();
+  canvas.style.opacity = '0.4';
+  setTimeout(() => canvas.style.opacity = '1', 150);
+});
+
+// Undo
+btnUndo.addEventListener('click', undo);
+function undo() {
+  if (strokes.length === 0) return;
+  const removed = strokes.pop();
+  if (removed) undoStack.push(removed);
+  saveAnnotations();
+  renderAll();
+}
+
+// ── Keyboard shortcuts ─────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  const map = { 'p': 'pen', 'h': 'highlighter', 'e': 'eraser', 'l': 'laser', 'b': 'box' };
+  const key = e.key.toLowerCase();
+  if (map[key]) {
+    const btn = document.querySelector(`[data-tool="${map[key]}"]`);
+    if (btn) btn.click();
+  }
+  if (key === 'z' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); undo(); }
+  if (e.key === ' ') { e.preventDefault(); btnHide.click(); }
+  if (key === 'escape') { document.getElementById('zoom-reset').click(); }
+});
+
+// ── Experiment scanning ────────────────────────────────────
+async function scanExperiments() {
+  const exps = [];
+
+  // Try known experiments by probing their index.html
+  // The iframe path must match the public URL structure
+  const candidates = ['geometry-viz'];
+
+  for (const folder of candidates) {
+    try {
+      const resp = await fetch(`/experiments/${folder}/index.html`);
+      if (resp.ok) {
+        const text = await resp.text();
+        const title = text.match(/<title>([^<]+)<\/title>/i)?.[1] || folder;
+        exps.push({ id: folder, title, path: `/experiments/${folder}/` });
+      }
+    } catch {}
+  }
+
+  // Fallback if scanning fails
+  if (exps.length === 0) {
+    exps.push({ id: 'geometry-viz', title: 'Transversal Angle Explorer', path: '/experiments/geometry-viz/' });
+  }
+
+  return exps;
+}
+
+// ── Load experiment ────────────────────────────────────────
+async function loadExperiment(path) {
+  const expPath = path || '/experiments/geometry-viz/';
+  frame.src = expPath;
+  state.currentExperiment = expPath;
+  loadAnnotations();
+}
+
+// ── Annotation persistence ─────────────────────────────────
+function storageKey() {
+  return `annotator:${state.currentExperiment}`;
+}
+
+function saveAnnotations() {
+  try {
+    const data = strokes.map(s => ({
+      tool: s.tool, color: s.color, thickness: s.thickness,
+      points: s.points, boxData: s.boxData,
+    }));
+    localStorage.setItem(storageKey(), JSON.stringify(data));
+  } catch {}
+}
+
+function loadAnnotations() {
+  try {
+    const raw = localStorage.getItem(storageKey());
+    if (raw) {
+      strokes = JSON.parse(raw);
+    } else {
+      strokes = [];
+    }
+  } catch {
+    strokes = [];
+  }
+  undoStack = [];
+  renderAll();
+}
+
+// ── Init ────────────────────────────────────────────────────
+async function init() {
+  // Populate experiment picker
+  const exps = await scanExperiments();
+  expSelect.innerHTML = '';
+  for (const exp of exps) {
+    const opt = document.createElement('option');
+    opt.value = exp.path;
+    opt.textContent = exp.title;
+    expSelect.appendChild(opt);
+  }
+
+  expSelect.addEventListener('change', () => {
+    loadExperiment(expSelect.value);
+  });
+
+  // Load first experiment
+  loadExperiment(exps[0]?.path || '/geometry-viz/');
+
+  // Setup
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+}
+
+init();
+</script>
+</body>
+</html>
