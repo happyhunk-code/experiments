@@ -61,13 +61,23 @@
     backdrop-filter: blur(6px);
     z-index: 10;
     text-align: center;
-    min-width: 300px;
+    min-width: 340px;
+  }
+  .control-row {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    justify-content: center;
+  }
+  .control-group {
+    flex: 1;
+    min-width: 140px;
   }
   #controls label {
     display: block;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: #aaa;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
   #controls input[type="range"] {
     width: 100%;
@@ -75,11 +85,11 @@
     cursor: grab;
   }
   #controls input[type="range"]:active { cursor: grabbing; }
-  #angle-value {
-    font-size: 1.1rem;
+  #angle-value, #gap-value {
+    font-size: 0.95rem;
     color: #fff;
     font-weight: 600;
-    margin-top: 6px;
+    margin-top: 4px;
   }
   #congruence-badge {
     display: inline-block;
@@ -93,7 +103,7 @@
   }
   .instruction {
     position: absolute;
-    bottom: 100px;
+    bottom: 110px;
     left: 50%;
     transform: translateX(-50%);
     color: #555;
@@ -104,7 +114,9 @@
   }
   @media (max-width: 600px) {
     #legend { top: 10px; left: 10px; padding: 12px 14px; font-size: 0.75rem; min-width: 150px; }
-    #controls { min-width: 200px; padding: 12px 16px; }
+    #controls { min-width: 200px; padding: 12px 14px; }
+    .control-row { flex-direction: column; gap: 10px; }
+    .control-group { min-width: unset; }
   }
 </style>
 </head>
@@ -123,13 +135,22 @@
 </div>
 
 <div id="controls">
-  <label for="angle-slider">Transversal Angle</label>
-  <input type="range" id="angle-slider" min="20" max="80" value="50" step="0.5">
-  <div id="angle-value">Transversal: 50°</div>
+  <div class="control-row">
+    <div class="control-group">
+      <label for="angle-slider">Transversal Angle</label>
+      <input type="range" id="angle-slider" min="20" max="80" value="50" step="0.5">
+      <div id="angle-value">50°</div>
+    </div>
+    <div class="control-group">
+      <label for="gap-slider">Line Spacing</label>
+      <input type="range" id="gap-slider" min="0" max="4.4" value="4.4" step="0.1">
+      <div id="gap-value">d = 4.4</div>
+    </div>
+  </div>
   <div id="congruence-badge">✅ All angle pairs congruent</div>
 </div>
 
-<div class="instruction">← Drag the slider to rotate the transversal →</div>
+<div class="instruction">← Drag sliders to explore →</div>
 
 <script type="importmap">
 {
@@ -184,9 +205,8 @@ const fillLight = new THREE.DirectionalLight(0x8888ff, 0.4);
 fillLight.position.set(-3, 0, -5);
 scene.add(fillLight);
 
-// ── Geometry constants ───────────────────────────────────────
-const lineY1 = 2.2;
-const lineY2 = -2.2;
+// ── Geometry state ───────────────────────────────────────────
+let gap = 4.4;            // total gap between ℓ₁ and ℓ₂ (centered at 0)
 const lineZ = 0;
 const extX = 5.5;
 
@@ -216,33 +236,34 @@ function createLine(x1, y1, x2, y2, color = 0x555577, dashed = false) {
   return line;
 }
 
-// ── Parallel lines ───────────────────────────────────────────
+// ── Parallel lines (dynamic) ─────────────────────────────────
 const lineMat = new THREE.LineBasicMaterial({ color: 0xaaaadd, linewidth: 2 });
+let parLines = null;
+let parLabels = null;
 
-function makeParallelLine(y) {
-  const pts = [new THREE.Vector3(-extX, y, lineZ), new THREE.Vector3(extX, y, lineZ)];
-  return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lineMat);
-}
-const topLine = makeParallelLine(lineY1);
-const bottomLine = makeParallelLine(lineY2);
-scene.add(topLine);
-scene.add(bottomLine);
+function rebuildParallelLines(g) {
+  const y1 = g / 2;
+  const y2 = -g / 2;
 
-// Labels for parallel lines
-function makeLabel(text, pos, color = '#aaaadd') {
-  const div = document.createElement('div');
-  div.textContent = text;
-  div.style.color = color;
-  div.style.fontSize = '14px';
-  div.style.fontWeight = '600';
-  div.style.fontFamily = 'system-ui, sans-serif';
-  div.style.textShadow = '0 0 8px rgba(0,0,0,0.9)';
-  const label = new CSS2DObject(div);
-  label.position.copy(pos);
-  return label;
+  if (parLines) { scene.remove(parLines); parLines.children.forEach(c => { c.geometry && c.geometry.dispose(); }); }
+  if (parLabels) { scene.remove(parLabels); parLabels.children.forEach(c => {}); }
+
+  parLines = new THREE.Group();
+  const p1 = [new THREE.Vector3(-extX, y1, lineZ), new THREE.Vector3(extX, y1, lineZ)];
+  const p2 = [new THREE.Vector3(-extX, y2, lineZ), new THREE.Vector3(extX, y2, lineZ)];
+  parLines.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p1), lineMat));
+  parLines.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p2), lineMat));
+  scene.add(parLines);
+
+  parLabels = new THREE.Group();
+  const d1 = document.createElement('div'); d1.textContent = '\u2113\u2081'; d1.style.cssText = 'color:#aaaadd;font-size:14px;font-weight:600;font-family:system-ui,sans-serif;text-shadow:0 0 8px rgba(0,0,0,0.9)';
+  const l1 = new CSS2DObject(d1); l1.position.set(-extX - 0.5, y1 + 0.3, lineZ); parLabels.add(l1);
+  const d2 = document.createElement('div'); d2.textContent = '\u2113\u2082'; d2.style.cssText = 'color:#aaaadd;font-size:14px;font-weight:600;font-family:system-ui,sans-serif;text-shadow:0 0 8px rgba(0,0,0,0.9)';
+  const l2 = new CSS2DObject(d2); l2.position.set(-extX - 0.5, y2 + 0.3, lineZ); parLabels.add(l2);
+  scene.add(parLabels);
 }
-scene.add(makeLabel('ℓ₁', new THREE.Vector3(-extX - 0.5, lineY1 + 0.3, lineZ)));
-scene.add(makeLabel('ℓ₂', new THREE.Vector3(-extX - 0.5, lineY2 + 0.3, lineZ)));
+
+rebuildParallelLines(gap);
 
 // ── Transversal (rotatable) ──────────────────────────────────
 const transversalGroup = new THREE.Group();
@@ -259,6 +280,8 @@ function updateTransversal(angleDeg) {
     if (child.material) child.material.dispose();
   }
 
+  const y1 = gap / 2;
+  const y2 = -gap / 2;
   const angleRad = angleDeg * Math.PI / 180;
   const halfLen = 5.5;
   const dx = halfLen * Math.cos(angleRad);
@@ -272,12 +295,12 @@ function updateTransversal(angleDeg) {
   // Transversal: y = mx where m = tan(angleRad)
   // ℓ₁: y = lineY1
   const m = Math.tan(angleRad);
-  const x1 = lineY1 / m;
-  const x2 = lineY2 / m;
+  const x1 = y1 / m;
+  const x2 = y2 / m;
 
   // Angles at top intersection
-  const topRight = { x: x1, y: lineY1 };
-  const bottomRight = { x: x2, y: lineY2 };
+  const topRight = { x: x1, y: y1 };
+  const bottomRight = { x: x2, y: y2 };
 
   // Compute angles (∠ from positive x-axis)
   // Top angles:
@@ -365,7 +388,7 @@ function updateTransversal(angleDeg) {
   }
 
   // ── Define the angles ──────────────────────────────────────
-  // At top intersection (x1, lineY1):
+  // At top intersection (x1, y1):
   // The transversal line goes UP and RIGHT from (x1, y1). Its direction is angleRad from horizontal.
   // Above the top line, the transversal makes angle theta with the horizontal.
   // Below the top line, it makes theta + 180 (the other direction).
@@ -391,47 +414,55 @@ function updateTransversal(angleDeg) {
   //   - The transversal going up-right is angle theta
   
   // ∠1 (top-right, inside) — Corresponding with ∠5
-  addArc(x1, lineY1, 0, theta * Math.PI / 180, arcR, COLOR_CORR, `${theta.toFixed(1)}°`, 0);
+  addArc(x1, y1, 0, theta * Math.PI / 180, arcR, COLOR_CORR, `${theta.toFixed(1)}°`, 0);
 
   // ∠2 (top-right, outside) — Alternate Exterior pair 1 (green)
-  addArc(x1, lineY1, theta * Math.PI / 180, Math.PI, arcR * 0.9, COLOR_ALT_EXT_P1, `${(180-theta).toFixed(1)}°`, 0);
+  addArc(x1, y1, theta * Math.PI / 180, Math.PI, arcR * 0.9, COLOR_ALT_EXT_P1, `${(180-theta).toFixed(1)}°`, 0);
 
   // ∠3 (top-left, inside) — Alternate Interior pair 1 (red)
-  addArc(x1, lineY1, Math.PI, Math.PI + theta * Math.PI / 180, arcR, COLOR_ALT_INT_P1, `${theta.toFixed(1)}°`, 0);
+  addArc(x1, y1, Math.PI, Math.PI + theta * Math.PI / 180, arcR, COLOR_ALT_INT_P1, `${theta.toFixed(1)}°`, 0);
 
   // ∠4 (top-left, outside) — Corresponding with ∠8
-  addArc(x1, lineY1, Math.PI + theta * Math.PI / 180, 2 * Math.PI, arcR * 0.9, COLOR_CORR, `${(180-theta).toFixed(1)}°`, 0);
+  addArc(x1, y1, Math.PI + theta * Math.PI / 180, 2 * Math.PI, arcR * 0.9, COLOR_CORR, `${(180-theta).toFixed(1)}°`, 0);
 
   // Bottom intersection angles
   // ∠5 (bottom-left, outside) — Alternate Exterior pair 2 (blue)
-  addArc(x2, lineY2, Math.PI, Math.PI + theta * Math.PI / 180, arcR, COLOR_ALT_EXT_P2, `${theta.toFixed(1)}°`, 0);
+  addArc(x2, y2, Math.PI, Math.PI + theta * Math.PI / 180, arcR, COLOR_ALT_EXT_P2, `${theta.toFixed(1)}°`, 0);
 
   // ∠6 (bottom-left, inside) — Alternate Interior pair 2 (yellow)
-  addArc(x2, lineY2, Math.PI + theta * Math.PI / 180, 2 * Math.PI, arcR * 0.9, COLOR_ALT_INT_P2, `${(180-theta).toFixed(1)}°`, 0);
+  addArc(x2, y2, Math.PI + theta * Math.PI / 180, 2 * Math.PI, arcR * 0.9, COLOR_ALT_INT_P2, `${(180-theta).toFixed(1)}°`, 0);
 
   // ∠7 (bottom-right, inside) — Corresponding? No, alt int with ∠3... 
   // Actually ∠7 = 180-theta (bottom-right, inside). Alternate interior pair 1 with ∠3.
   // Both ∠3 and ∠7 are inside the parallel lines, on opposite sides of transversal.
   // Using red (ALT_INT_P1) to match ∠3.
-  addArc(x2, lineY2, 0, theta * Math.PI / 180, arcR, COLOR_ALT_INT_P1, `${theta.toFixed(1)}°`, 0);
+  addArc(x2, y2, 0, theta * Math.PI / 180, arcR, COLOR_ALT_INT_P1, `${theta.toFixed(1)}°`, 0);
 
   // ∠8 (bottom-right, outside) — Corresponding with ∠4
-  addArc(x2, lineY2, theta * Math.PI / 180, Math.PI, arcR * 0.9, COLOR_CORR, `${(180-theta).toFixed(1)}°`, 0);
+  addArc(x2, y2, theta * Math.PI / 180, Math.PI, arcR * 0.9, COLOR_CORR, `${(180-theta).toFixed(1)}°`, 0);
 
   // ── Update UI ──────────────────────────────────────────────
-  document.getElementById('angle-value').textContent = `Transversal: ${theta.toFixed(1)}°`;
+  document.getElementById('angle-value').textContent = `${theta.toFixed(1)}°`;
   document.getElementById('congruence-badge').textContent = 
     `✅ All angle pairs congruent  (${theta.toFixed(1)}° & ${thetaSup.toFixed(1)}°)`;
 }
 
-// ── Slider ───────────────────────────────────────────────────
-const slider = document.getElementById('angle-slider');
-let currentAngle = parseFloat(slider.value);
+// ── Sliders ───────────────────────────────────────────────────
+const angleSlider = document.getElementById('angle-slider');
+const gapSlider = document.getElementById('gap-slider');
+let currentAngle = parseFloat(angleSlider.value);
 updateTransversal(currentAngle);
 
-slider.addEventListener('input', () => {
-  currentAngle = parseFloat(slider.value);
+angleSlider.addEventListener('input', () => {
+  currentAngle = parseFloat(angleSlider.value);
   updateTransversal(currentAngle);
+});
+
+gapSlider.addEventListener('input', () => {
+  gap = parseFloat(gapSlider.value);
+  document.getElementById('gap-value').textContent = `d = ${gap.toFixed(1)}`;
+  rebuildParallelLines(gap);
+  updateTransversal(parseFloat(angleSlider.value));
 });
 
 // ── Grid (subtle) ────────────────────────────────────────────
