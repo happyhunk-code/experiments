@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teaching Annotator — Bookmarklet</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #0f0f13; color: #e0e0e0;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; padding: 3rem 1rem;
+  }
+  h1 { font-size: 1.8rem; color: #fff; margin-bottom: 0.5rem; }
+  p { color: #888; max-width: 600px; text-align: center; line-height: 1.6; margin-bottom: 2rem; }
+  .bookmarklet-link {
+    display: inline-block;
+    background: #1a3a2a; color: #6cdb9e;
+    border: 2px solid #3a6a4a; border-radius: 10px;
+    padding: 14px 28px; font-size: 1.2rem; font-weight: 700;
+    text-decoration: none; cursor: move;
+    transition: background 0.15s, transform 0.15s;
+    margin-bottom: 2rem;
+  }
+  .bookmarklet-link:hover {
+    background: #2a4a3a; transform: scale(1.05);
+  }
+  .instructions {
+    background: #1a1a24; border: 1px solid #2a2a38;
+    border-radius: 10px; padding: 1.5rem 2rem;
+    max-width: 550px; width: 100%;
+  }
+  .instructions h2 { color: #fff; font-size: 1rem; margin-bottom: 1rem; }
+  .instructions ol { padding-left: 1.2rem; color: #aaa; font-size: 0.9rem; line-height: 1.8; }
+  .instructions ol li { margin-bottom: 0.3rem; }
+  .instructions code {
+    background: #2a2a3a; padding: 2px 6px; border-radius: 4px;
+    color: #6cdb9e; font-size: 0.85rem;
+  }
+  .note {
+    margin-top: 1.5rem; color: #666; font-size: 0.8rem; text-align: center;
+  }
+</style>
+</head>
+<body>
+  <h1>🎓 Teaching Annotator</h1>
+  <p>Drag this link to your bookmarks bar. Click it on any page to activate the annotation overlay.</p>
+
+  <a class="bookmarklet-link" href="javascript:(function(){document.body.appendChild(document.createElement('script')).src='https://161530d7e8.abacusai.cloud/experiments/annotator/bookmarklet.js?'+Date.now()})()">🎓 Annotate</a>
+
+  <div class="instructions">
+    <h2>How to install</h2>
+    <ol>
+      <li>Make sure your bookmarks bar is visible (<code>Ctrl+Shift+B</code>)</li>
+      <li><strong>Drag</strong> the green button above to your bookmarks bar</li>
+      <li>Navigate to any page (experiment, article, student work)</li>
+      <li>Click the bookmarklet to activate the tools</li>
+      <li>Press <code>M</code> for mouse, <code>L</code> for laser, <code>H</code> for highlighter, <code>E</code> for eraser, <code>B</code> for box, <code>Shift</code> for pan</li>
+      <li>Hold <code>Ctrl</code> + scroll to zoom the entire page</li>
+      <li>Click the 📷 button to save a screenshot</li>
+    </ol>
+  </div>
+
+  <p class="note">Annotations save locally per page. No data is sent anywhere.</p>
+</body>
+</html>
