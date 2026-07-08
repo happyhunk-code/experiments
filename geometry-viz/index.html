@@ -114,9 +114,11 @@
 
 <div id="legend">
   <h2>📐 Angle Pairs</h2>
-  <div class="legend-item"><div class="legend-color" style="background:#ff6b6b"></div><span class="legend-label">Alternate Interior (congruent)</span></div>
-  <div class="legend-item"><div class="legend-color" style="background:#4ecdc4"></div><span class="legend-label">Alternate Exterior (congruent)</span></div>
-  <div class="legend-item"><div class="legend-color" style="background:#ffd93d"></div><span class="legend-label">Corresponding (congruent)</span></div>
+  <div class="legend-item"><div class="legend-color" style="background:#ff6b6b"></div><span class="legend-label">Alternate Interior ∠3 (red)</span></div>
+  <div class="legend-item"><div class="legend-color" style="background:#ffd93d"></div><span class="legend-label">Alternate Interior ∠6 (yellow)</span></div>
+  <div class="legend-item"><div class="legend-color" style="background:#6cdb9e"></div><span class="legend-label">Alternate Exterior ∠2 (green)</span></div>
+  <div class="legend-item"><div class="legend-color" style="background:#4ea8de"></div><span class="legend-label">Alternate Exterior ∠5 (blue)</span></div>
+  <div class="legend-item"><div class="legend-color" style="background:#ff9f43"></div><span class="legend-label">Corresponding (orange) — both pairs</span></div>
   <div class="legend-item"><div class="legend-color" style="background:#888"></div><span class="legend-label">Consecutive Interior (supplementary)</span></div>
 </div>
 
@@ -188,11 +190,16 @@ const lineY2 = -2.2;
 const lineZ = 0;
 const extX = 5.5;
 
-// Colors
-const COLOR_ALT_INT = 0xff6b6b;   // red
-const COLOR_ALT_EXT = 0x4ecdc4;   // teal
-const COLOR_CORR = 0xffd93d;      // yellow
-const COLOR_CONS_INT = 0x888888;  // gray
+// Colors — pair 1 / pair 2 for each type, so students see congruence visually
+// Alternate Interior: red (#ff6b6b)  &  yellow (#ffd93d)
+// Alternate Exterior: green (#6cdb9e)  &  blue (#4ea8de)
+// Corresponding: both orange (#ff9f43)
+const COLOR_ALT_INT_P1 = 0xff6b6b;   // red
+const COLOR_ALT_INT_P2 = 0xffd93d;   // yellow
+const COLOR_ALT_EXT_P1 = 0x6cdb9e;   // green
+const COLOR_ALT_EXT_P2 = 0x4ea8de;   // blue
+const COLOR_CORR = 0xff9f43;         // orange
+const COLOR_CONS_INT = 0x888888;     // gray
 
 // ── Helper: create a line ────────────────────────────────────
 function createLine(x1, y1, x2, y2, color = 0x555577, dashed = false) {
@@ -383,40 +390,32 @@ function updateTransversal(angleDeg) {
   //   - The line to the LEFT is angle π (negative x)
   //   - The transversal going up-right is angle theta
   
-  // ∠1 (top-right, inside) — between horizontal (0) and transversal (theta)
+  // ∠1 (top-right, inside) — Corresponding with ∠5
   addArc(x1, lineY1, 0, theta * Math.PI / 180, arcR, COLOR_CORR, `${theta.toFixed(1)}°`, 0);
 
-  // ∠2 (top-right, outside) — between transversal (theta) and upward vertical (π/2)
-  // Actually ∠2 is the supplementary angle on the outside, above the top line
-  // Between transversal (theta) and the reverse direction (theta + π) on the outside
-  // Upper region: between transversal (theta) and the perpendicular going up... 
-  // Simpler: ∠2 is just the other angle at that vertex — supplementary to ∠1
-  addArc(x1, lineY1, theta * Math.PI / 180, Math.PI, arcR * 0.9, COLOR_ALT_EXT, `${(180-theta).toFixed(1)}°`, 0);
+  // ∠2 (top-right, outside) — Alternate Exterior pair 1 (green)
+  addArc(x1, lineY1, theta * Math.PI / 180, Math.PI, arcR * 0.9, COLOR_ALT_EXT_P1, `${(180-theta).toFixed(1)}°`, 0);
 
-  // ∠3 (top-left, inside) — between reverse transversal and leftward
-  // Transversal reverses at angle theta + π. The line to the left is angle π.
-  // Going counterclockwise from π to π + theta: that's theta radians
-  addArc(x1, lineY1, Math.PI, Math.PI + theta * Math.PI / 180, arcR, COLOR_ALT_INT, `${theta.toFixed(1)}°`, 0);
+  // ∠3 (top-left, inside) — Alternate Interior pair 1 (red)
+  addArc(x1, lineY1, Math.PI, Math.PI + theta * Math.PI / 180, arcR, COLOR_ALT_INT_P1, `${theta.toFixed(1)}°`, 0);
 
-  // ∠4 (top-left, outside) — the supplementary
+  // ∠4 (top-left, outside) — Corresponding with ∠8
   addArc(x1, lineY1, Math.PI + theta * Math.PI / 180, 2 * Math.PI, arcR * 0.9, COLOR_CORR, `${(180-theta).toFixed(1)}°`, 0);
 
   // Bottom intersection angles
-  // ∠5 (bottom-left, outside) — between leftward horizontal and downward transversal
-  // Line to the left: angle π. Downward transversal: angle π + theta (reversed from top)
-  // Going counterclockwise from π to π+theta = theta radians
-  addArc(x2, lineY2, Math.PI, Math.PI + theta * Math.PI / 180, arcR, COLOR_ALT_EXT, `${theta.toFixed(1)}°`, 0);
+  // ∠5 (bottom-left, outside) — Alternate Exterior pair 2 (blue)
+  addArc(x2, lineY2, Math.PI, Math.PI + theta * Math.PI / 180, arcR, COLOR_ALT_EXT_P2, `${theta.toFixed(1)}°`, 0);
 
-  // ∠6 (bottom-left, inside) — supplementary
-  addArc(x2, lineY2, Math.PI + theta * Math.PI / 180, 2 * Math.PI, arcR * 0.9, COLOR_ALT_INT, `${(180-theta).toFixed(1)}°`, 0);
+  // ∠6 (bottom-left, inside) — Alternate Interior pair 2 (yellow)
+  addArc(x2, lineY2, Math.PI + theta * Math.PI / 180, 2 * Math.PI, arcR * 0.9, COLOR_ALT_INT_P2, `${(180-theta).toFixed(1)}°`, 0);
 
-  // ∠7 (bottom-right, inside) — between rightward horizontal (0) and upward transversal going the other way
-  // The upward transversal at bottom intersection: angle theta (same direction as at top)
-  // Actually at bottom, the transversal goes UP and RIGHT, same direction angle theta from horizontal.
-  // Going ccw from 0 to theta:
-  addArc(x2, lineY2, 0, theta * Math.PI / 180, arcR, COLOR_ALT_INT, `${theta.toFixed(1)}°`, 0);
+  // ∠7 (bottom-right, inside) — Corresponding? No, alt int with ∠3... 
+  // Actually ∠7 = 180-theta (bottom-right, inside). Alternate interior pair 1 with ∠3.
+  // Both ∠3 and ∠7 are inside the parallel lines, on opposite sides of transversal.
+  // Using red (ALT_INT_P1) to match ∠3.
+  addArc(x2, lineY2, 0, theta * Math.PI / 180, arcR, COLOR_ALT_INT_P1, `${theta.toFixed(1)}°`, 0);
 
-  // ∠8 (bottom-right, outside) — supplementary
+  // ∠8 (bottom-right, outside) — Corresponding with ∠4
   addArc(x2, lineY2, theta * Math.PI / 180, Math.PI, arcR * 0.9, COLOR_CORR, `${(180-theta).toFixed(1)}°`, 0);
 
   // ── Update UI ──────────────────────────────────────────────
