@@ -126,12 +126,10 @@
 
 <div id="legend">
   <h2>📐 Angle Pairs</h2>
-  <div class="legend-item"><div class="legend-color" style="background:#ff6b6b"></div><span class="legend-label">Alternate Interior ∠3 (red)</span></div>
-  <div class="legend-item"><div class="legend-color" style="background:#ffd93d"></div><span class="legend-label">Alternate Interior ∠6 (yellow)</span></div>
-  <div class="legend-item"><div class="legend-color" style="background:#6cdb9e"></div><span class="legend-label">Alternate Exterior ∠2 (green)</span></div>
-  <div class="legend-item"><div class="legend-color" style="background:#4ea8de"></div><span class="legend-label">Alternate Exterior ∠5 (blue)</span></div>
-  <div class="legend-item"><div class="legend-color" style="background:#ff9f43"></div><span class="legend-label">Corresponding (orange) — both pairs</span></div>
-  <div class="legend-item"><div class="legend-color" style="background:#888"></div><span class="legend-label">Consecutive Interior (supplementary)</span></div>
+  <div class="legend-item"><div class="legend-color" style="background:#ff6b6b"></div><span class="legend-label">Alternate Interior pair (red)</span></div>
+  <div class="legend-item"><div class="legend-color" style="background:#ffd93d"></div><span class="legend-label">Alternate Interior pair (yellow)</span></div>
+  <div class="legend-item"><div class="legend-color" style="background:#6cdb9e"></div><span class="legend-label">Alternate Exterior pair (green)</span></div>
+  <div class="legend-item"><div class="legend-color" style="background:#4ea8de"></div><span class="legend-label">Alternate Exterior pair (blue)</span></div>
 </div>
 
 <div id="controls">
@@ -210,16 +208,13 @@ let gap = 4.4;            // total gap between ℓ₁ and ℓ₂ (centered at 0)
 const lineZ = 0;
 const extX = 5.5;
 
-// Colors — pair 1 / pair 2 for each type, so students see congruence visually
-// Alternate Interior: red (#ff6b6b)  &  yellow (#ffd93d)
-// Alternate Exterior: green (#6cdb9e)  &  blue (#4ea8de)
-// Corresponding: both orange (#ff9f43)
+// Colors — each angle pair type gets two colors showing congruence
+// Alternate Interior pair 1: red (#ff6b6b), pair 2: yellow (#ffd93d)
+// Alternate Exterior pair 1: green (#6cdb9e), pair 2: blue (#4ea8de)
 const COLOR_ALT_INT_P1 = 0xff6b6b;   // red
 const COLOR_ALT_INT_P2 = 0xffd93d;   // yellow
 const COLOR_ALT_EXT_P1 = 0x6cdb9e;   // green
 const COLOR_ALT_EXT_P2 = 0x4ea8de;   // blue
-const COLOR_CORR = 0xff9f43;         // orange
-const COLOR_CONS_INT = 0x888888;     // gray
 
 // ── Helper: create a line ────────────────────────────────────
 function createLine(x1, y1, x2, y2, color = 0x555577, dashed = false) {
@@ -406,40 +401,25 @@ function updateTransversal(angleDeg) {
 
   const arcR = 0.35;
 
-  // Top intersection angles
-  // Transversal goes from bottom-left to top-right (direction angleRad)
-  // At top intersection (x1, y1):
-  //   - The line to the RIGHT is angle 0 (positive x)
-  //   - The line to the LEFT is angle π (negative x)
-  //   - The transversal going up-right is angle theta
-  
-  // ∠1 (top-right, inside) — Corresponding with ∠5
-  addArc(x1, y1, 0, theta * Math.PI / 180, arcR, COLOR_CORR, `${theta.toFixed(1)}°`, 0);
+  // ── Draw only Alternate Interior & Alternate Exterior pairs ──
+  // 4 arcs total: each color appears twice showing congruence.
+  //
+  // RED (θ°):     top-left inside       (∠3)  ≅  bottom-right inside  (∠7)   — Alt Interior (acute)
+  // YELLOW (180-θ°): top-right inside   (∠2)  ≅  bottom-left inside   (∠6)   — Alt Interior (obtuse)
+  // GREEN (θ°):     top-right outside   (∠1)  ≅  bottom-left outside  (∠5)   — Alt Exterior (acute)
+  // BLUE (180-θ°):  top-left outside    (∠4)  ≅  bottom-right outside (∠8)   — Alt Exterior (obtuse)
 
-  // ∠2 (top-right, outside) — Alternate Exterior pair 1 (green)
-  addArc(x1, y1, theta * Math.PI / 180, Math.PI, arcR * 0.9, COLOR_ALT_EXT_P1, `${(180-theta).toFixed(1)}°`, 0);
+  // Top intersection (x1, y1)
+  addArc(x1, y1, 0, theta * Math.PI / 180, arcR, COLOR_ALT_EXT_P1, `${theta.toFixed(1)}°`, 0);                     // ∠1 — alt ext (green)
+  addArc(x1, y1, theta * Math.PI / 180, Math.PI, arcR * 0.9, COLOR_ALT_INT_P2, `${(180-theta).toFixed(1)}°`, 0);    // ∠2 — alt int (yellow)
+  addArc(x1, y1, Math.PI, Math.PI + theta * Math.PI / 180, arcR, COLOR_ALT_INT_P1, `${theta.toFixed(1)}°`, 0);      // ∠3 — alt int (red)
+  addArc(x1, y1, Math.PI + theta * Math.PI / 180, 2 * Math.PI, arcR * 0.9, COLOR_ALT_EXT_P2, `${(180-theta).toFixed(1)}°`, 0);  // ∠4 — alt ext (blue)
 
-  // ∠3 (top-left, inside) — Alternate Interior pair 1 (red)
-  addArc(x1, y1, Math.PI, Math.PI + theta * Math.PI / 180, arcR, COLOR_ALT_INT_P1, `${theta.toFixed(1)}°`, 0);
-
-  // ∠4 (top-left, outside) — Corresponding with ∠8
-  addArc(x1, y1, Math.PI + theta * Math.PI / 180, 2 * Math.PI, arcR * 0.9, COLOR_CORR, `${(180-theta).toFixed(1)}°`, 0);
-
-  // Bottom intersection angles
-  // ∠5 (bottom-left, outside) — Alternate Exterior pair 2 (blue)
-  addArc(x2, y2, Math.PI, Math.PI + theta * Math.PI / 180, arcR, COLOR_ALT_EXT_P2, `${theta.toFixed(1)}°`, 0);
-
-  // ∠6 (bottom-left, inside) — Alternate Interior pair 2 (yellow)
-  addArc(x2, y2, Math.PI + theta * Math.PI / 180, 2 * Math.PI, arcR * 0.9, COLOR_ALT_INT_P2, `${(180-theta).toFixed(1)}°`, 0);
-
-  // ∠7 (bottom-right, inside) — Corresponding? No, alt int with ∠3... 
-  // Actually ∠7 = 180-theta (bottom-right, inside). Alternate interior pair 1 with ∠3.
-  // Both ∠3 and ∠7 are inside the parallel lines, on opposite sides of transversal.
-  // Using red (ALT_INT_P1) to match ∠3.
-  addArc(x2, y2, 0, theta * Math.PI / 180, arcR, COLOR_ALT_INT_P1, `${theta.toFixed(1)}°`, 0);
-
-  // ∠8 (bottom-right, outside) — Corresponding with ∠4
-  addArc(x2, y2, theta * Math.PI / 180, Math.PI, arcR * 0.9, COLOR_CORR, `${(180-theta).toFixed(1)}°`, 0);
+  // Bottom intersection (x2, y2) — matching colors
+  addArc(x2, y2, 0, theta * Math.PI / 180, arcR, COLOR_ALT_INT_P1, `${theta.toFixed(1)}°`, 0);                     // ∠7 — alt int (red) ≡ ∠3
+  addArc(x2, y2, theta * Math.PI / 180, Math.PI, arcR * 0.9, COLOR_ALT_EXT_P2, `${(180-theta).toFixed(1)}°`, 0);    // ∠8 — alt ext (blue) ≡ ∠4
+  addArc(x2, y2, Math.PI, Math.PI + theta * Math.PI / 180, arcR, COLOR_ALT_EXT_P1, `${theta.toFixed(1)}°`, 0);      // ∠5 — alt ext (green) ≡ ∠1
+  addArc(x2, y2, Math.PI + theta * Math.PI / 180, 2 * Math.PI, arcR * 0.9, COLOR_ALT_INT_P2, `${(180-theta).toFixed(1)}°`, 0);  // ∠6 — alt int (yellow) ≡ ∠2
 
   // ── Update UI ──────────────────────────────────────────────
   document.getElementById('angle-value').textContent = `${theta.toFixed(1)}°`;
