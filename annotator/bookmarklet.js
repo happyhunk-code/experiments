@@ -93,6 +93,9 @@ function setTool(t){
  if(t!=='select')S._lastDrawingTool=t;
  var needsCanvas=['pen','highlighter','eraser','box','text','select'].includes(t);
  cv.classList.toggle('active',needsCanvas||t==='pan');
+ // Don't enable canvas pointer events if annotations are hidden
+ if(!S.visible){cv.style.pointerEvents='none'}
+ else cv.style.pointerEvents='';
  var cursors={pen:'none',select:'crosshair',eraser:'none',highlighter:'none',text:'text',box:'crosshair',mouse:'default'};
  cv.style.cursor=cursors[t]||'default';if(t==='select'){S.selected=[];render()}
  document.body.style.cursor=(t==='select'||t==='pan')?'auto':'auto';
@@ -201,8 +204,8 @@ document.addEventListener('keydown',function(e){
  if(toolKeys[k]&&S.tool!==toolKeys[k]){e.preventDefault();setTool(toolKeys[k])}
  var n=parseInt(e.key);if(n>=1&&n<=6){e.preventDefault();var sws=qa('.tacolor');sws.forEach(function(s){s.classList.remove('active')});sws[n-1].classList.add('active');S.color=colors[n-1]}
  if(e.key===' '){e.preventDefault();
-  if(S.visible){S.visible=false;setTool('select');S.selected=[];render();document.getElementById('tahide').style.color='#6cdb9e'}
-  else{S.visible=true;setTool(S._lastDrawingTool||'pen');render();document.getElementById('tahide').style.color='#aaa'}
+  if(S.visible){S.visible=false;setTool('select');S.selected=[];render();document.getElementById('tahide').style.color='#6cdb9e';cv.style.pointerEvents='none'}
+  else{S.visible=true;setTool(S._lastDrawingTool||'pen');render();document.getElementById('tahide').style.color='#aaa';cv.style.pointerEvents=S.tool==='select'?'none':'auto'}
  }
  if((e.ctrlKey||e.metaKey)&&k==='z'){e.preventDefault();undo()}
  if((e.key==='Delete'||e.key==='Backspace')&&S.selected.length){e.preventDefault();for(var i=S.selected.length-1;i>=0;i--)strokes.splice(S.selected[i],1);S.selected=[];save();render()}
