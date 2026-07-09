@@ -23,24 +23,20 @@
     transition: background 0.15s, transform 0.15s;
     margin-bottom: 2rem;
   }
-  .bookmarklet-link:hover {
-    background: #2a4a3a; transform: scale(1.05);
-  }
+  .bookmarklet-link:hover { background: #2a4a3a; transform: scale(1.05); }
   .instructions {
     background: #1a1a24; border: 1px solid #2a2a38;
     border-radius: 10px; padding: 1.5rem 2rem;
-    max-width: 550px; width: 100%;
+    max-width: 600px; width: 100%; margin-bottom: 1rem;
   }
-  .instructions h2 { color: #fff; font-size: 1rem; margin-bottom: 1rem; }
-  .instructions ol { padding-left: 1.2rem; color: #aaa; font-size: 0.9rem; line-height: 1.8; }
+  .instructions h2 { color: #fff; font-size: 1rem; margin-bottom: 0.8rem; }
+  .instructions p, .instructions li { color: #aaa; font-size: 0.9rem; line-height: 1.7; }
+  .instructions ol { padding-left: 1.2rem; }
   .instructions ol li { margin-bottom: 0.3rem; }
-  .instructions code {
-    background: #2a2a3a; padding: 2px 6px; border-radius: 4px;
-    color: #6cdb9e; font-size: 0.85rem;
-  }
-  .note {
-    margin-top: 1.5rem; color: #666; font-size: 0.8rem; text-align: center;
-  }
+  .instructions code { background: #2a2a3a; padding: 2px 6px; border-radius: 4px; color: #6cdb9e; font-size: 0.85rem; }
+  .instructions .kbd { background: #2a2a3a; padding: 1px 5px; border-radius: 3px; color: #ffd93d; font-size: 0.85rem; font-family: monospace; }
+  hr { border: none; border-top: 1px solid #2a2a38; margin: 1rem 0; }
+  .note { margin-top: 1rem; color: #666; font-size: 0.8rem; text-align: center; }
 </style>
 </head>
 <body>
@@ -50,18 +46,35 @@
   <a class="bookmarklet-link" href="javascript:(function(){document.body.appendChild(document.createElement('script')).src='https://161530d7e8.abacusai.cloud/experiments/annotator/bookmarklet.js?'+Date.now()})()">🎓 Annotate</a>
 
   <div class="instructions">
-    <h2>How to install</h2>
+    <h2>📋 Installation</h2>
     <ol>
-      <li>Make sure your bookmarks bar is visible (<code>Ctrl+Shift+B</code>)</li>
+      <li>Show your bookmarks bar (<span class="kbd">Ctrl+Shift+B</span>)</li>
       <li><strong>Drag</strong> the green button above to your bookmarks bar</li>
-      <li>Navigate to any page (experiment, article, student work)</li>
-      <li>Click the bookmarklet to activate the tools</li>
-      <li>Press <code>M</code> for mouse, <code>L</code> for laser, <code>H</code> for highlighter, <code>E</code> for eraser, <code>B</code> for box, <code>Shift</code> for pan</li>
-      <li>Hold <code>Ctrl</code> + scroll to zoom the entire page</li>
-      <li>Click the 📷 button to save a screenshot</li>
+      <li>Navigate to any page and click the bookmarklet</li>
     </ol>
   </div>
 
-  <p class="note">Annotations save locally per page. No data is sent anywhere.</p>
+  <div class="instructions">
+    <h2>🎨 Tools</h2>
+    <p>
+      <span class="kbd">P</span> Pen &nbsp;
+      <span class="kbd">S</span> Select &nbsp;
+      <span class="kbd">G</span> Pan &nbsp;
+      <span class="kbd">T</span> Text &nbsp;
+      <span class="kbd">K</span> Black Box &nbsp;
+      <span class="kbd">H</span> Highlighter &nbsp;
+      <span class="kbd">E</span> Eraser &nbsp;
+      <span class="kbd">B</span> Box Outline
+    </p>
+    <p><span class="kbd">1-6</span> Switch colors &nbsp; <span class="kbd">Space</span> Show/Hide overlay</p>
+    <p><span class="kbd">Ctrl+Scroll</span> Brush size &nbsp; <span class="kbd">Ctrl+Z</span> Undo</p>
+    <hr>
+    <h2>⬛ Black Boxes</h2>
+    <p><strong>Right-click</strong> a black box to remove it individually.</p>
+    <p>Press <span class="kbd">Esc</span> (while Blackout tool is active) to clear all black boxes at once.</p>
+    <p>Drag any black box to reposition it over hidden content.</p>
+  </div>
+
+  <p class="note">Annotations save locally per page. No data sent anywhere.</p>
 </body>
 </html>
