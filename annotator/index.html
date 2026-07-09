@@ -2,438 +2,79 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Teaching Annotator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teaching Annotator — Bookmarklet</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; overflow: hidden; background: #0f0f13; font-family: system-ui, sans-serif; }
-
-  #app { display: flex; height: 100%; width: 100%; }
-
-  /* ── Sidebar (tools) ── */
-  #sidebar {
-    width: 50px;
-    background: #16161f;
-    border-right: 1px solid #2a2a38;
-    display: flex; flex-direction: column; align-items: center;
-    padding: 10px 0; gap: 3px; flex-shrink: 0; z-index: 20;
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #0f0f13; color: #e0e0e0;
+    min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; padding: 3rem 1rem;
   }
-  #sidebar .tool-btn {
-    width: 36px; height: 36px; border: none; border-radius: 7px;
-    background: transparent; color: #888; cursor: pointer;
-    font-size: 16px; display: flex; align-items: center; justify-content: center;
-    transition: background 0.12s, color 0.12s;
+  h1 { font-size: 1.8rem; color: #fff; margin-bottom: 0.5rem; }
+  p { color: #888; max-width: 600px; text-align: center; line-height: 1.6; margin-bottom: 2rem; }
+  .bookmarklet-link {
+    display: inline-block;
+    background: #1a3a2a; color: #6cdb9e;
+    border: 2px solid #3a6a4a; border-radius: 10px;
+    padding: 14px 28px; font-size: 1.2rem; font-weight: 700;
+    text-decoration: none; cursor: move;
+    transition: background 0.15s, transform 0.15s;
+    margin-bottom: 2rem;
   }
-  #sidebar .tool-btn:hover { background: #22223a; color: #ccc; }
-  #sidebar .tool-btn.active { background: #2a3a5a; color: #6cdb9e; }
-  #sidebar .tool-btn.active[data-tool="mouse"] { background: #2a2a3a; color: #aaaadd; }
-  #sidebar .tool-btn.active[data-tool="highlighter"] { background: #2a2a1a; color: #ffd93d; }
-  #sidebar .tool-btn.active[data-tool="eraser"] { background: #1a1a2a; color: #888; }
-  #sidebar .tool-btn.active[data-tool="laser"] { background: #2a1a2a; color: #ff6b6b; }
-  #sidebar .tool-btn.active[data-tool="box"] { background: #1a2a2a; color: #4ea8de; }
-  #sidebar .separator { width: 30px; height: 1px; background: #2a2a38; margin: 5px 0; }
-  .color-swatch {
-    width: 18px; height: 18px; border-radius: 50%;
-    border: 2px solid transparent; cursor: pointer; margin: 2px 0;
-    transition: border-color 0.12s, transform 0.12s;
+  .bookmarklet-link:hover { background: #2a4a3a; transform: scale(1.05); }
+  .instructions {
+    background: #1a1a24; border: 1px solid #2a2a38;
+    border-radius: 10px; padding: 1.5rem 2rem;
+    max-width: 600px; width: 100%; margin-bottom: 1rem;
   }
-  .color-swatch:hover { transform: scale(1.15); }
-  .color-swatch.active { border-color: #6cdb9e; }
-  .color-1 { background: #ff6b6b; } .color-2 { background: #ffd93d; }
-  .color-3 { background: #6cdb9e; } .color-4 { background: #4ea8de; }
-  .color-5 { background: #ffffff; } .color-6 { background: #ff9f43; }
-
-  /* ── Main area ── */
-  #main { flex: 1; position: relative; overflow: hidden; }
-
-  #experiment-frame {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    border: none; pointer-events: auto;
-  }
-  #annotation-canvas {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    touch-action: none; z-index: 10;
-  }
-
-  /* ── Bottom bar ── */
-  #bottom-bar {
-    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
-    background: rgba(22, 22, 31, 0.92); border: 1px solid #2a2a38;
-    border-radius: 12px; padding: 7px 16px;
-    display: flex; align-items: center; gap: 12px;
-    z-index: 20; backdrop-filter: blur(8px); font-size: 13px; color: #aaa;
-  }
-  #bottom-bar label { font-size: 12px; color: #888; white-space: nowrap; }
-  #thickness-slider { width: 80px; accent-color: #6cdb9e; cursor: grab; cursor: -webkit-grab; }
-  #thickness-slider:active { cursor: grabbing; }
-  #thickness-value { min-width: 26px; text-align: center; color: #fff; font-weight: 600; }
-  #bottom-bar .ctrl-btn {
-    background: none; border: 1px solid #2a2a38; border-radius: 6px;
-    color: #aaa; cursor: pointer; padding: 3px 7px; font-size: 13px;
-    transition: background 0.12s, color 0.12s;
-  }
-  #bottom-bar .ctrl-btn:hover { background: #22223a; color: #fff; }
-  #zoom-display { min-width: 48px; text-align: center; color: #888; font-size: 12px; }
-
-  /* ── Experiment picker (bottom-left area) ── */
-  #picker-area {
-    position: absolute; bottom: 60px; left: 10px;
-    z-index: 25; display: flex; gap: 4px;
-  }
-  #picker-area select {
-    background: rgba(22, 22, 31, 0.88); border: 1px solid #2a2a38;
-    border-radius: 7px; color: #e0e0e0; padding: 3px 7px;
-    font-size: 12px; cursor: pointer; max-width: 180px;
-    backdrop-filter: blur(8px);
-  }
-  #picker-area select:focus { outline: none; border-color: #4ea8de; }
-  #picker-area .sm-btn {
-    background: rgba(22, 22, 31, 0.88); border: 1px solid #2a2a38;
-    border-radius: 7px; color: #aaa; cursor: pointer;
-    padding: 3px 8px; font-size: 14px;
-    backdrop-filter: blur(8px); transition: background 0.12s, color 0.12s;
-  }
-  #picker-area .sm-btn:hover { background: #22223a; color: #fff; }
-
-  /* ── Action buttons (top-right) ── */
-  #action-buttons {
-    position: absolute; top: 10px; right: 10px;
-    z-index: 25; display: flex; gap: 5px;
-  }
-  #action-buttons button {
-    background: rgba(22, 22, 31, 0.9); border: 1px solid #2a2a38;
-    border-radius: 7px; color: #aaa; font-size: 16px;
-    width: 32px; height: 32px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    backdrop-filter: blur(8px); transition: background 0.12s, color 0.12s;
-  }
-  #action-buttons button:hover { background: #22223a; color: #fff; }
-  #action-buttons button.active-toggle { color: #6cdb9e; background: #1a3a2a; border-color: #3a6a4a; }
-
-  @media (max-width: 700px) {
-    #sidebar { width: 40px; }
-    #sidebar .tool-btn { width: 28px; height: 28px; font-size: 13px; }
-    #bottom-bar { padding: 5px 10px; gap: 6px; font-size: 11px; left: 5%; transform: none; right: 5%; width: 90%; }
-    #thickness-slider { width: 50px; }
-    #picker-area select { max-width: 120px; font-size: 11px; }
-  }
+  .instructions h2 { color: #fff; font-size: 1rem; margin-bottom: 0.8rem; }
+  .instructions p, .instructions li { color: #aaa; font-size: 0.9rem; line-height: 1.7; }
+  .instructions ol { padding-left: 1.2rem; }
+  .instructions ol li { margin-bottom: 0.3rem; }
+  .instructions code { background: #2a2a3a; padding: 2px 6px; border-radius: 4px; color: #6cdb9e; font-size: 0.85rem; }
+  .instructions .kbd { background: #2a2a3a; padding: 1px 5px; border-radius: 3px; color: #ffd93d; font-size: 0.85rem; font-family: monospace; }
+  hr { border: none; border-top: 1px solid #2a2a38; margin: 1rem 0; }
+  .note { margin-top: 1rem; color: #666; font-size: 0.8rem; text-align: center; }
 </style>
 </head>
 <body>
-<div id="app">
+  <h1>🎓 Teaching Annotator</h1>
+  <p>Drag this link to your bookmarks bar. Click it on any page to activate the annotation overlay.</p>
 
-  <!-- Sidebar -->
-  <div id="sidebar">
-    <button class="tool-btn active" data-tool="mouse" title="Mouse (M) — interact with page">🖱️</button>
-    <button class="tool-btn" data-tool="laser" title="Laser pointer (L) — point or draw">🔴</button>
-    <button class="tool-btn" data-tool="highlighter" title="Highlighter (H)">🖍️</button>
-    <button class="tool-btn" data-tool="eraser" title="Eraser (E)">🧹</button>
-    <button class="tool-btn" data-tool="box" title="Box Outline (B)">⬜</button>
-    <div class="separator"></div>
-    <div class="color-swatch color-1 active" data-color="#ff6b6b" title="Red"></div>
-    <div class="color-swatch color-2" data-color="#ffd93d" title="Yellow"></div>
-    <div class="color-swatch color-3" data-color="#6cdb9e" title="Green"></div>
-    <div class="color-swatch color-4" data-color="#4ea8de" title="Blue"></div>
-    <div class="color-swatch color-5" data-color="#ffffff" title="White"></div>
-    <div class="color-swatch color-6" data-color="#ff9f43" title="Orange"></div>
+  <a class="bookmarklet-link" href="javascript:(function(){document.body.appendChild(document.createElement('script')).src='https://161530d7e8.abacusai.cloud/experiments/annotator/bookmarklet.js?'+Date.now()})()">🎓 Annotate</a>
+
+  <div class="instructions">
+    <h2>📋 Installation</h2>
+    <ol>
+      <li>Show your bookmarks bar (<span class="kbd">Ctrl+Shift+B</span>)</li>
+      <li><strong>Drag</strong> the green button above to your bookmarks bar</li>
+      <li>Navigate to any page and click the bookmarklet</li>
+    </ol>
   </div>
 
-  <!-- Main area -->
-  <div id="main">
-    <div id="picker-area">
-      <select id="experiment-select"></select>
-      <button class="sm-btn" id="btn-url" title="Load custom URL">🔗</button>
-    </div>
-
-    <div id="action-buttons">
-      <button id="btn-hide" title="Show/Hide annotations (Space)">👁️</button>
-      <button id="btn-clear" title="Clear all (double-click canvas)">🗑️</button>
-      <button id="btn-undo" title="Undo (Ctrl+Z)">↩️</button>
-    </div>
-
-    <iframe id="experiment-frame" src="" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
-    <canvas id="annotation-canvas"></canvas>
-
-    <div id="bottom-bar">
-      <label>Size</label>
-      <input type="range" id="thickness-slider" min="1" max="16" value="3" step="0.5">
-      <span id="thickness-value">3</span>
-      <span style="color:#333">|</span>
-      <button class="ctrl-btn" id="zoom-out">−</button>
-      <span id="zoom-display">100%</span>
-      <button class="ctrl-btn" id="zoom-in">+</button>
-      <button class="ctrl-btn" id="zoom-reset">⟲</button>
-    </div>
+  <div class="instructions">
+    <h2>🎨 Tools</h2>
+    <p>
+      <span class="kbd">P</span> Pen &nbsp;
+      <span class="kbd">S</span> Select &nbsp;
+      <span class="kbd">G</span> Pan &nbsp;
+      <span class="kbd">T</span> Text &nbsp;
+      <span class="kbd">K</span> Black Box &nbsp;
+      <span class="kbd">H</span> Highlighter &nbsp;
+      <span class="kbd">E</span> Eraser &nbsp;
+      <span class="kbd">B</span> Box Outline
+    </p>
+    <p><span class="kbd">1-6</span> Switch colors &nbsp; <span class="kbd">Space</span> Show/Hide overlay</p>
+    <p><span class="kbd">Ctrl+Scroll</span> Brush size &nbsp; <span class="kbd">Ctrl+Z</span> Undo</p>
+    <hr>
+    <h2>⬛ Black Boxes</h2>
+    <p><strong>Right-click</strong> a black box to remove it individually.</p>
+    <p>Press <span class="kbd">Esc</span> (while Blackout tool is active) to clear all black boxes at once.</p>
+    <p>Drag any black box to reposition it over hidden content.</p>
   </div>
-</div>
 
-<script type="module">
-// ── DOM refs ──
-const canvas = document.getElementById('annotation-canvas');
-const ctx = canvas.getContext('2d');
-const frame = document.getElementById('experiment-frame');
-const expSelect = document.getElementById('experiment-select');
-const thicknessSlider = document.getElementById('thickness-slider');
-const thicknessValue = document.getElementById('thickness-value');
-const zoomDisplay = document.getElementById('zoom-display');
-const btnHide = document.getElementById('btn-hide');
-const btnClear = document.getElementById('btn-clear');
-const btnUndo = document.getElementById('btn-undo');
-const btnUrl = document.getElementById('btn-url');
-const main = document.getElementById('main');
-const toolBtns = document.querySelectorAll('[data-tool]');
-const colorSwatches = document.querySelectorAll('.color-swatch');
-
-// ── State ──
-const state = {
-  tool: 'mouse',
-  color: '#ff6b6b',
-  thickness: 3,
-  zoom: 1,
-  panX: 0,
-  panY: 0,
-  isDrawing: false,
-  isVisible: true,
-  currentExperiment: '',
-};
-
-let strokes = [];
-let currentStroke = null;
-let undoStack = [];
-let laserPoint = null;
-
-// ── Canvas sizing ──
-function resizeCanvas() {
-  const rect = main.getBoundingClientRect();
-  canvas.width = rect.width;
-  canvas.height = rect.height;
-  canvas.style.width = rect.width + 'px';
-  canvas.style.height = rect.height + 'px';
-  renderAll();
-}
-
-// ── Coordinate helpers ──
-function clientToCanvas(cx, cy) {
-  const r = canvas.getBoundingClientRect();
-  return { x: (cx - r.left) / state.zoom - state.panX, y: (cy - r.top) / state.zoom - state.panY };
-}
-
-// ── Mouse tool: pass events through to iframe ──
-function iframePointer(e) {
-  // When mouse tool is active, canvas captures nothing — let events fall through.
-  // We use CSS pointer-events to toggle the iframe.
-}
-
-// ── Rendering ──
-function renderAll() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  if (!state.isVisible) return;
-  ctx.save();
-  ctx.translate(state.panX * state.zoom, state.panY * state.zoom);
-  ctx.scale(state.zoom, state.zoom);
-  for (const s of strokes) drawStroke(s);
-  if (currentStroke) drawStroke(currentStroke);
-  if (state.tool === 'laser' && laserPoint && !state.isDrawing) {
-    const p = laserPoint;
-    const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 14);
-    g.addColorStop(0, 'rgba(255,50,50,0.85)');
-    g.addColorStop(0.3, 'rgba(255,50,50,0.35)');
-    g.addColorStop(1, 'rgba(255,50,50,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(p.x, p.y, 14, 0, Math.PI*2); ctx.fill();
-  }
-  ctx.restore();
-}
-
-function drawStroke(s) {
-  if (s.tool === 'box' && s.boxData) {
-    const b = s.boxData;
-    ctx.save(); ctx.strokeStyle = s.color; ctx.lineWidth = s.thickness;
-    ctx.setLineDash([5, 4]); ctx.strokeRect(b.x, b.y, b.w, b.h); ctx.restore();
-    return;
-  }
-  if (!s.points || s.points.length < 2) return;
-  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  if (s.tool === 'highlighter') { ctx.globalAlpha = 0.35; ctx.strokeStyle = s.color; ctx.lineWidth = s.thickness * 3.5; }
-  else if (s.tool === 'eraser') { ctx.globalCompositeOperation = 'destination-out'; ctx.strokeStyle = 'rgba(0,0,0,1)'; ctx.lineWidth = s.thickness * 2.5; }
-  else { ctx.strokeStyle = s.color; ctx.lineWidth = s.thickness; }
-  ctx.beginPath(); ctx.moveTo(s.points[0].x, s.points[0].y);
-  for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y);
-  ctx.stroke(); ctx.restore();
-}
-
-// ── Pointer handlers ──
-function gp(e) {
-  const t = e.touches ? e.touches[0] : e;
-  return clientToCanvas(t.clientX, t.clientY);
-}
-
-const isDrawingTool = () => state.tool === 'laser' || state.tool === 'highlighter' || state.tool === 'eraser' || state.tool === 'box';
-
-canvas.addEventListener('mousedown', (e) => {
-  if (state.tool === 'mouse') return;
-  if (e.button !== 0) return;
-  e.preventDefault();
-  const pos = gp(e);
-  if (state.tool === 'box') currentStroke = { tool: 'box', color: state.color, thickness: state.thickness, boxData: { x: pos.x, y: pos.y, w: 0, h: 0 } };
-  else currentStroke = { tool: state.tool, color: state.color, thickness: state.thickness, points: [pos] };
-  state.isDrawing = true;
-});
-
-canvas.addEventListener('mousemove', (e) => {
-  if (state.tool === 'mouse') return;
-  const pos = gp(e);
-  if (state.tool === 'laser' && !state.isDrawing) { laserPoint = pos; renderAll(); return; }
-  if (!state.isDrawing || !currentStroke) return;
-  if (currentStroke.tool === 'box' && currentStroke.boxData) {
-    currentStroke.boxData.w = pos.x - currentStroke.boxData.x;
-    currentStroke.boxData.h = pos.y - currentStroke.boxData.y;
-  } else {
-    currentStroke.points.push(pos);
-  }
-  renderAll();
-});
-
-canvas.addEventListener('mouseup', (e) => {
-  if (state.tool === 'mouse') return;
-  if (!state.isDrawing || !currentStroke) return;
-  state.isDrawing = false;
-  if (currentStroke.tool === 'box' && currentStroke.boxData && Math.abs(currentStroke.boxData.w) < 4 && Math.abs(currentStroke.boxData.h) < 4) { currentStroke = null; renderAll(); return; }
-  if (currentStroke.points && currentStroke.points.length < 3 && currentStroke.tool !== 'box') { currentStroke = null; renderAll(); return; }
-  strokes.push(currentStroke);
-  undoStack = [];
-  currentStroke = null;
-  saveAnnotations();
-  renderAll();
-});
-
-canvas.addEventListener('mouseleave', () => { laserPoint = null; if (state.isDrawing) { state.isDrawing = false; currentStroke = null; renderAll(); } });
-
-// Touch
-canvas.addEventListener('touchstart', (e) => { if (state.tool === 'mouse') return; e.preventDefault(); const t = e.touches[0]; const pos = clientToCanvas(t.clientX, t.clientY); if (state.tool === 'box') currentStroke = { tool: 'box', color: state.color, thickness: state.thickness, boxData: { x: pos.x, y: pos.y, w: 0, h: 0 } }; else currentStroke = { tool: state.tool, color: state.color, thickness: state.thickness, points: [pos] }; state.isDrawing = true; }, { passive: false });
-canvas.addEventListener('touchmove', (e) => { if (state.tool === 'mouse' || !state.isDrawing || !currentStroke) { e.preventDefault(); return; } e.preventDefault(); const t = e.touches[0]; const pos = clientToCanvas(t.clientX, t.clientY); if (currentStroke.tool === 'box' && currentStroke.boxData) { currentStroke.boxData.w = pos.x - currentStroke.boxData.x; currentStroke.boxData.h = pos.y - currentStroke.boxData.y; } else { currentStroke.points.push(pos); } renderAll(); }, { passive: false });
-canvas.addEventListener('touchend', (e) => { if (state.tool === 'mouse' || !state.isDrawing || !currentStroke) return; e.preventDefault(); state.isDrawing = false; if (currentStroke.tool === 'box' && currentStroke.boxData && Math.abs(currentStroke.boxData.w) < 4 && Math.abs(currentStroke.boxData.h) < 4) { currentStroke = null; renderAll(); return; } strokes.push(currentStroke); undoStack = []; currentStroke = null; saveAnnotations(); renderAll(); }, { passive: false });
-
-// ── Thickness ──
-thicknessSlider.addEventListener('input', () => { state.thickness = parseFloat(thicknessSlider.value); thicknessValue.textContent = state.thickness; });
-
-// ── Tool switching ──
-function setTool(name) {
-  toolBtns.forEach(b => b.classList.toggle('active', b.dataset.tool === name));
-  state.tool = name;
-  const isMouse = name === 'mouse';
-  canvas.style.cursor = isMouse ? 'default' : name === 'eraser' ? 'cell' : name === 'laser' ? 'none' : 'crosshair';
-  frame.style.pointerEvents = isMouse ? 'auto' : 'none';
-  main.style.cursor = canvas.style.cursor;
-}
-
-toolBtns.forEach(btn => btn.addEventListener('click', () => setTool(btn.dataset.tool)));
-
-// Keyboard shortcuts
-document.addEventListener('keydown', (e) => {
-  const k = e.key.toLowerCase();
-  const m = { 'm': 'mouse', 'l': 'laser', 'h': 'highlighter', 'e': 'eraser', 'b': 'box' };
-  if (m[k]) { e.preventDefault(); setTool(m[k]); }
-  if ((e.ctrlKey||e.metaKey) && k === 'z') { e.preventDefault(); undo(); }
-  if (e.key === ' ') { e.preventDefault(); btnHide.click(); }
-  if (e.key === 'Escape') { document.getElementById('zoom-reset').click(); }
-});
-
-// ── Colors ──
-colorSwatches.forEach(sw => sw.addEventListener('click', () => {
-  colorSwatches.forEach(s => s.classList.remove('active'));
-  sw.classList.add('active'); state.color = sw.dataset.color;
-}));
-
-// ── Zoom ──
-function applyZoom() { zoomDisplay.textContent = Math.round(state.zoom*100)+'%'; renderAll(); }
-document.getElementById('zoom-in').addEventListener('click', () => { state.zoom = Math.min(state.zoom+0.25, 5); applyZoom(); });
-document.getElementById('zoom-out').addEventListener('click', () => { state.zoom = Math.max(state.zoom-0.25, 0.25); applyZoom(); });
-document.getElementById('zoom-reset').addEventListener('click', () => { state.zoom = 1; state.panX = 0; state.panY = 0; applyZoom(); });
-
-main.addEventListener('wheel', (e) => {
-  if (e.ctrlKey || e.metaKey) { e.preventDefault(); const d = e.deltaY > 0 ? -0.12 : 0.12; state.zoom = Math.max(0.25, Math.min(5, state.zoom+d)); applyZoom(); }
-}, { passive: false });
-
-// Pinch zoom
-let lastPinch = 0;
-main.addEventListener('touchstart', (e) => { if (e.touches.length === 2) lastPinch = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY); }, { passive: true });
-main.addEventListener('touchmove', (e) => {
-  if (e.touches.length === 2) { e.preventDefault(); const d = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY); state.zoom = Math.max(0.25, Math.min(5, state.zoom+(d-lastPinch)*0.006)); lastPinch = d; applyZoom(); }
-}, { passive: false });
-
-// Pan (middle mouse)
-let panning = false, panStart = { x: 0, y: 0 };
-canvas.addEventListener('mousedown', (e) => { if (e.button === 1 && state.tool === 'mouse') { panning = true; panStart = { x: e.clientX - state.panX*state.zoom, y: e.clientY - state.panY*state.zoom }; e.preventDefault(); } });
-canvas.addEventListener('mousemove', (e) => { if (panning) { state.panX = (e.clientX-panStart.x)/state.zoom; state.panY = (e.clientY-panStart.y)/state.zoom; renderAll(); } });
-canvas.addEventListener('mouseup', (e) => { if (e.button === 1) panning = false; });
-
-// ── Actions ──
-btnHide.addEventListener('click', () => { state.isVisible = !state.isVisible; btnHide.classList.toggle('active-toggle'); renderAll(); });
-
-let lastClick = 0;
-canvas.addEventListener('click', (e) => {
-  if (state.tool === 'mouse') return;
-  const now = Date.now();
-  if (now - lastClick < 400) { strokes = []; undoStack = []; saveAnnotations(); renderAll(); canvas.style.opacity = '0.35'; setTimeout(() => canvas.style.opacity = '1', 150); }
-  lastClick = now;
-});
-btnClear.addEventListener('click', () => { strokes = []; undoStack = []; saveAnnotations(); renderAll(); canvas.style.opacity = '0.35'; setTimeout(() => canvas.style.opacity = '1', 150); });
-
-function undo() { if (strokes.length === 0) return; undoStack.push(strokes.pop()); saveAnnotations(); renderAll(); }
-btnUndo.addEventListener('click', undo);
-
-// ── Scan experiments ──
-async function scanExperiments() {
-  const candidates = ['geometry-viz'];
-  const exps = [];
-  for (const folder of candidates) {
-    try {
-      const r = await fetch(`/experiments/${folder}/index.html`);
-      if (r.ok) {
-        const text = await r.text();
-        exps.push({ id: folder, title: (text.match(/<title>([^<]+)<\/title>/i)?.[1] || folder), path: `/experiments/${folder}/` });
-      }
-    } catch {}
-  }
-  return exps.length ? exps : [{ id: 'geometry-viz', title: 'Transversal Angle Explorer', path: '/experiments/geometry-viz/' }];
-}
-
-// ── Load experiment ──
-function loadExperiment(path) {
-  frame.src = path;
-  state.currentExperiment = path;
-  loadAnnotations();
-}
-
-// ── URL dialog ──
-btnUrl.addEventListener('click', () => {
-  const url = prompt('Enter a URL to load:', frame.src.includes('://') && !frame.src.startsWith(window.location.origin+'/') ? frame.src : '');
-  if (url && url.trim()) {
-    // Allow same-origin experiments or external pages
-    frame.src = url.trim();
-    state.currentExperiment = url.trim();
-    strokes = []; loadAnnotations();
-  }
-});
-
-// ── Persistence ──
-function storageKey() { return `annotator:${state.currentExperiment}`; }
-function saveAnnotations() { try { localStorage.setItem(storageKey(), JSON.stringify(strokes.map(s => ({ tool: s.tool, color: s.color, thickness: s.thickness, points: s.points, boxData: s.boxData })))); } catch {} }
-function loadAnnotations() { try { const r = localStorage.getItem(storageKey()); strokes = r ? JSON.parse(r) : []; } catch { strokes = []; } undoStack = []; renderAll(); }
-
-// ── Init ──
-async function init() {
-  const exps = await scanExperiments();
-  expSelect.innerHTML = exps.map(e => `<option value="${e.path}">${e.title}</option>`).join('');
-  expSelect.addEventListener('change', () => loadExperiment(expSelect.value));
-  loadExperiment(exps[0]?.path || '/experiments/geometry-viz/');
-  setTool('mouse');
-  resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
-}
-
-init();
-</script>
+  <p class="note">Annotations save locally per page. No data sent anywhere.</p>
 </body>
 </html>
